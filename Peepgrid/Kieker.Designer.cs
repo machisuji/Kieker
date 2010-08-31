@@ -81,7 +81,6 @@
             this.TransparencyKey = System.Drawing.Color.Cyan;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Peepgrid_Load);
-            this.Resize += new System.EventHandler(this.Peepgrid_Resize);
             this.contextMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
 

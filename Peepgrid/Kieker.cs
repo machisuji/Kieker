@@ -9,131 +9,12 @@ using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.Threading;
+using Kieker.DllImport;
 
 namespace Kieker
 {
     public partial class ThumbView : Form
     {
-        private const int SW_HIDE = 0;
-        private const int SW_SHOWNOACTIVATE = 4;
-        private const int SW_SHOW = 5;
-        private const int SW_MINIMIZE = 6;
-        private const int SW_SHOWMINNOACTIVE = 7;
-        private const int SW_RESTORE = 9;
-        private const int SW_FORCEMINIMIZE = 11;
-
-        [DllImport("user32.dll")] 
-        private static extern int ShowWindow(IntPtr hwnd, int nCmdShow);
-
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        public static extern int SetForegroundWindow(IntPtr hWnd);
-
-        [DllImport("user32.dll")]
-        public static extern int BringWindowToTop(IntPtr hWnd);
-
-        [DllImport("kernel32.dll")]
-        public static extern int GetLastError();
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern int GetWindowTextLength(HandleRef hWnd);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        public static extern int GetWindowText(HandleRef hWnd, StringBuilder lpString, int nMaxCount);
-
-        [DllImport("user32.dll")]
-        public static extern bool GetWindowRect(IntPtr hWnd, out Rect rect);
-
-        [DllImport("dwmapi.dll")]
-        static extern int DwmRegisterThumbnail(IntPtr dest, IntPtr src, out IntPtr thumb);
-
-        [DllImport("dwmapi.dll")]
-        static extern int DwmUnregisterThumbnail(IntPtr thumb);
-
-        [DllImport("dwmapi.dll")]
-        static extern int DwmQueryThumbnailSourceSize(IntPtr thumb, out PSIZE size);
-
-        [DllImport("dwmapi.dll")]
-        static extern int DwmUpdateThumbnailProperties(IntPtr hThumb, ref DWM_THUMBNAIL_PROPERTIES props);
-
-        [DllImport("user32.dll")]
-        static extern int EnumWindows(EnumWindowsCallback lpEnumFunc, int lParam);
-
-        [DllImport("user32.dll")]
-        public static extern void GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-
-        [DllImport("user32.dll")]
-        static extern ulong GetWindowLongA(IntPtr hWnd, int nIndex);
-
-        static readonly int GWL_STYLE = -16;
-
-        static readonly ulong WS_VISIBLE = 0x10000000L;
-        static readonly ulong WS_BORDER = 0x00800000L;
-        static readonly ulong TARGETWINDOW = WS_BORDER | WS_VISIBLE;
-
-        static readonly int DWM_TNP_VISIBLE = 0x8;
-        static readonly int DWM_TNP_OPACITY = 0x4;
-        static readonly int DWM_TNP_RECTDESTINATION = 0x1;
-        static readonly int DWM_TNP_RECTSOURCE = 0x2;
-
-        delegate bool EnumWindowsCallback(IntPtr hwnd, int lParam);
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct PSIZE
-        {
-            public int x;
-            public int y;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        internal struct DWM_THUMBNAIL_PROPERTIES
-        {
-            public int dwFlags;
-            public Rect rcDestination;
-            public Rect rcSource;
-            public byte opacity;
-            public bool fVisible;
-            public bool fSourceClientAreaOnly;
-        }
-
-        private string ToString(Rect rect)
-        {
-            return "[" + rect.Left + ", " + rect.Top + ", " + rect.Right + ", " + rect.Bottom + "]";
-        }
-
-        internal class Window
-        {
-            public string Title;
-            public IntPtr Handle;
-            public Thumb Thumb;
-            public Rectangle Rect;
-
-            public override string ToString()
-            {
-                return Title;
-            }
-        }
-
-        internal class Thumb
-        {
-            public IntPtr Value;
-            public Rectangle Destination;
-            public Rectangle Rect;
-
-            public Thumb(IntPtr value, Rectangle destination)
-            {
-                Value = value;
-                Destination = destination;
-            }
-
-            public override string ToString()
-            {
-                return "Thumb " + Value.ToString() + " @" + Destination.ToString();
-            }
-        }
-
         private List<Window> windows;
         private List<Thumb> thumbs = new List<Thumb>();
         private RectNode thumbRects;
@@ -199,29 +80,17 @@ namespace Kieker
                 }
             }
             Unaction();
-            SetForegroundWindow(target.Handle);
+            User32.SetForegroundWindow(target.Handle);
             Hide();
             notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
                 " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
         }
 
-        private void MoveLast(List<Window> windows, Window window)
-        {
-            windows.Remove(window);
-            windows.Add(window);
-        }
-
-        private void MoveFirst(List<Window> windows, Window window)
-        {
-            windows.Remove(window);
-            windows.Insert(0, window);
-        }
-
         private string GetWindowText(IntPtr hwnd)
         {
-            int capacity = GetWindowTextLength(new HandleRef(this, hwnd)) * 2;
+            int capacity = User32.GetWindowTextLength(new HandleRef(this, hwnd)) * 2;
             StringBuilder stringBuilder = new StringBuilder(capacity);
-            GetWindowText(new HandleRef(this, hwnd), stringBuilder, stringBuilder.Capacity);
+            User32.GetWindowText(new HandleRef(this, hwnd), stringBuilder, stringBuilder.Capacity);
 
             return stringBuilder.ToString();
         }
@@ -241,22 +110,22 @@ namespace Kieker
         private void GetWindows()
         {
             windows = new List<Window>();
-            EnumWindows(Callback, 0);
-        }
-
-        private bool Callback(IntPtr hwnd, int lParam)
-        {
-            if (this.Handle != hwnd && (GetWindowLongA(hwnd, GWL_STYLE) & TARGETWINDOW) == TARGETWINDOW)
+            User32.EnumWindowsCallback callback = (hwnd, lParam) =>
             {
-                StringBuilder sb = new StringBuilder(200);
-                GetWindowText(hwnd, sb, sb.Capacity);
-                Window t = new Window();
-                t.Handle = hwnd;
-                t.Title = sb.ToString();
-                windows.Add(t);
-            }
-
-            return true; //continue enumeration
+                if (this.Handle != hwnd &&
+                    (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & 
+                    Constants.TARGETWINDOW) == Constants.TARGETWINDOW)
+                {
+                    StringBuilder sb = new StringBuilder(200);
+                    User32.GetWindowText(hwnd, sb, sb.Capacity);
+                    Window t = new Window();
+                    t.Handle = hwnd;
+                    t.Title = sb.ToString();
+                    windows.Add(t);
+                }
+                return true;
+            };
+            User32.EnumWindows(callback, 0);
         }
 
         private void Peepgrid_Load(object sender, EventArgs e)
@@ -267,21 +136,11 @@ namespace Kieker
             Action();
         }
 
-        private void Peepgrid_Resize(object sender, EventArgs e)
-        {
-            UpdateThumbs();
-        }
-
-        private void refreshButton_Click(object sender, EventArgs e)
-        {
-            GetWindows();
-        }
-
         private void ClearThumbnails()
         {
             foreach (Thumb thumb in thumbs)
             {
-                if (thumb.Value != IntPtr.Zero) DwmUnregisterThumbnail(thumb.Value);
+                if (thumb.Value != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Value);
             }
             thumbs.Clear();
         }
@@ -300,7 +159,7 @@ namespace Kieker
             foreach (Window w in windows)
             {
                 IntPtr thumb = new IntPtr();
-                int i = DwmRegisterThumbnail(this.Handle, w.Handle, out thumb);
+                int i = DwmApi.DwmRegisterThumbnail(this.Handle, w.Handle, out thumb);
                 if (i == 0)
                 {
                     Thumb t = new Thumb(thumb, de.Current.ToRectangle());
@@ -326,11 +185,11 @@ namespace Kieker
                 {
                     Rect source = new Rect();
                     IntPtr thumb = new IntPtr();
-                    int i = DwmRegisterThumbnail(this.Handle, window.Handle, out thumb);
+                    int i = DwmApi.DwmRegisterThumbnail(this.Handle, window.Handle, out thumb);
                     if (i == 0)
                     {
                         Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
-                        GetWindowRect(window.Handle, out source);
+                        User32.GetWindowRect(window.Handle, out source);
                         thumbs.Add(t);
                         window.Thumb = t;
                         window.Rect = source.ToRectangle();
@@ -405,7 +264,7 @@ namespace Kieker
         private PSIZE GetSourceSize(IntPtr thumb)
         {
             PSIZE size;
-            DwmQueryThumbnailSourceSize(thumb, out size);
+            DwmApi.DwmQueryThumbnailSourceSize(thumb, out size);
             return size;
         }
 
@@ -458,14 +317,14 @@ namespace Kieker
             {
                 PSIZE size = GetSourceSize(thumb);
                 DWM_THUMBNAIL_PROPERTIES props = new DWM_THUMBNAIL_PROPERTIES();
-                props.dwFlags = DWM_TNP_VISIBLE | DWM_TNP_RECTDESTINATION;
+                props.dwFlags = Constants.DWM_TNP_VISIBLE | Constants.DWM_TNP_RECTDESTINATION;
                 props.fVisible = true;
                 props.rcDestination = new Rect(dest.Left, dest.Top, dest.Right, dest.Bottom);
                 if (size.x < dest.Right - dest.Left)
                     props.rcDestination.Right = props.rcDestination.Left + size.x;
                 if (size.y < dest.Bottom - dest.Top)
                     props.rcDestination.Bottom = props.rcDestination.Top + size.y;
-                DwmUpdateThumbnailProperties(thumb, ref props);
+                DwmApi.DwmUpdateThumbnailProperties(thumb, ref props);
                 return size;
             }
             else
@@ -527,26 +386,6 @@ namespace Kieker
             ret.Height = start.Height + (int)(sizeVector.Y * step);
 
             return ret;
-        }
-
-        private void opacity_Scroll(object sender, EventArgs e)
-        {
-            UpdateThumbs();
-        }
-
-        private void showAllButton_Click(object sender, EventArgs e)
-        {
-            ShowThumbnails();
-        }
-
-        private void clearButton_Click(object sender, EventArgs e)
-        {
-            ClearThumbnails();
-        }
-
-        private void exitButton_Click(object sender, EventArgs e)
-        {
-            Exit();
         }
 
         void Peepgrid_KeyDown(object sender, KeyEventArgs e)
@@ -640,172 +479,8 @@ namespace Kieker
         {
             foreach (Window window in windows)
             {
-                ShowWindow(window.Handle, cmd);
+                User32.ShowWindow(window.Handle, cmd);
             }
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    public struct Rect
-    {
-        internal Rect(int left, int top, int right, int bottom)
-        {
-            Left = left;
-            Top = top;
-            Right = right;
-            Bottom = bottom;
-        }
-
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    class RectNode
-    {
-        private Rectangle rect;
-        private RectNode childA;
-        private RectNode childB;
-        private bool taken = false;
-
-        public RectNode(Rectangle rect, RectNode childA, RectNode childB)
-        {
-            this.rect = rect;
-            this.childA = childA;
-            this.childB = childB;
-        }
-
-        public RectNode(Rectangle rect)
-        {
-            this.rect = rect;
-        }
-
-        public Rectangle GetRectangle()
-        {
-            return rect;
-        }
-
-        public RectNode GetChildA()
-        {
-            return childA;
-        }
-
-        public RectNode GetChildB()
-        {
-            return childB;
-        }
-
-        public bool IsTaken() { return taken; }
-
-        public bool IsLeaf() { return childA == null && childB == null; }
-
-        public void Normalize(Rectangle rect)
-        {
-            rect.X = 0;
-            rect.Y = 0;
-        }
-
-        public bool Insert(Rectangle rect)
-        {
-            Normalize(rect);
-            if (IsLeaf()) // insert rect here
-            {
-                if (!IsTaken() && this.rect.GetNormalized().Contains(rect)) // check if it fits
-                {
-                    int dw = this.rect.Width - rect.Width;
-                    int dh = this.rect.Height - rect.Height;
-                    if (dw > dh) // split horizontally
-                    {
-                        childA = new RectNode(new Rectangle(this.rect.X, this.rect.Y, 
-                            rect.Width, this.rect.Height));
-                        childB = new RectNode(new Rectangle(this.rect.X + rect.Width, this.rect.Y,
-                            this.rect.Width - rect.Width, this.rect.Height));
-                    }
-                    else // split vertically
-                    {
-                        childA = new RectNode(new Rectangle(this.rect.X, this.rect.Y, 
-                            this.rect.Width, rect.Height));
-                        childB = new RectNode(new Rectangle(this.rect.X, this.rect.Y + rect.Height,
-                            this.rect.Width, this.rect.Height - rect.Height));
-                    }
-                    childA.childA = new RectNode(new Rectangle(this.rect.X, this.rect.Y, 
-                        rect.Width, rect.Height));
-                    childA.childA.taken = true;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            else
-            {
-                return childA.Insert(rect) || childB.Insert(rect);
-            }
-        }
-
-        /// <summary>
-        /// Collects all taken (inserted) rects in this tree.
-        /// </summary>
-        /// <returns></returns>
-        public List<Rectangle> CollectRects()
-        {
-            if (IsTaken())
-            {
-                List<Rectangle> ret = new List<Rectangle>(1);
-                ret.Add(rect);
-                return ret;
-            }
-            else
-            {
-                List<Rectangle> ret = new List<Rectangle>();
-                if (childA != null) ret.AddRange(childA.CollectRects());
-                if (childB != null) ret.AddRange(childB.CollectRects());
-                return ret;
-            }
-        }
-    }
-
-    public static class ExtensionsClass
-    {
-        public static string Max(this string s, int length)
-        {
-            return length <= s.Length ? s.Substring(0, length) : s;
-        }
-
-        /// <summary>
-        /// Returns this String with a maximum length of <i>length</i> characters.
-        /// </summary>
-        /// <param name="s">this</param>
-        /// <param name="length">max length</param>
-        /// <param name="append">string to append if the string had to be truncated</param>
-        /// <returns>The string with the given string to append in case it had to be truncated.</returns>
-        public static string Max(this string s, int length, string append)
-        {
-            if (length <= s.Length)
-            {
-                return s.Substring(0, length) + (append != null ? append : "");
-            }
-            else
-            {
-                return s;
-            }
-        }
-
-        public static Rectangle ToRectangle(this Rect rect)
-        {
-            return new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-        }
-
-        public static Rect ToRect(this Rectangle rect)
-        {
-            return new Rect(rect.Left, rect.Top, rect.Right, rect.Bottom);
-        }
-
-        public static Rectangle GetNormalized(this Rectangle rect)
-        {
-            return new Rectangle(0, 0, rect.Width, rect.Height);
         }
     }
 }

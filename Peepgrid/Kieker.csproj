@@ -48,6 +48,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DllImport.cs" />
+    <Compile Include="Extensions.cs" />
     <Compile Include="Kieker.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -79,6 +81,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Types.cs" />
   </ItemGroup>
   <ItemGroup>
     <COMReference Include="Shell32">
