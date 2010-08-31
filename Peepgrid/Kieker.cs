@@ -8,21 +8,33 @@ using System.Text;
 using System.Windows.Forms;
 using System.Runtime.InteropServices;
 using Microsoft.Win32;
+using System.Threading;
 
-namespace Peepgrid
+namespace Kieker
 {
-    public partial class Peepgrid : Form
+    public partial class ThumbView : Form
     {
-        [DllImport("User32.dll")]
+        private const int SW_HIDE = 0;
+        private const int SW_SHOWNOACTIVATE = 4;
+        private const int SW_SHOW = 5;
+        private const int SW_MINIMIZE = 6;
+        private const int SW_SHOWMINNOACTIVE = 7;
+        private const int SW_RESTORE = 9;
+        private const int SW_FORCEMINIMIZE = 11;
+
+        [DllImport("user32.dll")] 
+        private static extern int ShowWindow(IntPtr hwnd, int nCmdShow);
+
+        [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
 
-        [DllImport("User32.dll")]
+        [DllImport("user32.dll")]
         public static extern int SetForegroundWindow(IntPtr hWnd);
 
-        [DllImport("User32.dll")]
+        [DllImport("user32.dll")]
         public static extern int BringWindowToTop(IntPtr hWnd);
 
-        [DllImport("Kernel32.dll")]
+        [DllImport("kernel32.dll")]
         public static extern int GetLastError();
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
@@ -30,6 +42,9 @@ namespace Peepgrid
 
         [DllImport("user32.dll", CharSet = CharSet.Auto)]
         public static extern int GetWindowText(HandleRef hWnd, StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        public static extern bool GetWindowRect(IntPtr hWnd, out Rect rect);
 
         [DllImport("dwmapi.dll")]
         static extern int DwmRegisterThumbnail(IntPtr dest, IntPtr src, out IntPtr thumb);
@@ -61,6 +76,7 @@ namespace Peepgrid
         static readonly int DWM_TNP_VISIBLE = 0x8;
         static readonly int DWM_TNP_OPACITY = 0x4;
         static readonly int DWM_TNP_RECTDESTINATION = 0x1;
+        static readonly int DWM_TNP_RECTSOURCE = 0x2;
 
         delegate bool EnumWindowsCallback(IntPtr hwnd, int lParam);
 
@@ -92,6 +108,7 @@ namespace Peepgrid
             public string Title;
             public IntPtr Handle;
             public Thumb Thumb;
+            public Rectangle Rect;
 
             public override string ToString()
             {
@@ -121,8 +138,9 @@ namespace Peepgrid
         private List<Thumb> thumbs = new List<Thumb>();
         private RectNode thumbRects;
         private bool debug = false;
+        private Shell32.ShellClass shell = new Shell32.ShellClass();
 
-        public Peepgrid()
+        public ThumbView()
         {
             InitializeComponent();
 
@@ -131,6 +149,11 @@ namespace Peepgrid
             this.MouseClick += new MouseEventHandler(Peepgrid_MouseClick);
             this.Paint += new PaintEventHandler(Peepgrid_Paint);
             this.TopMost = true;
+        }
+
+        private Rectangle Area()
+        {
+            return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
         }
 
         private string GetCurrentWallpaper()
@@ -146,19 +169,12 @@ namespace Peepgrid
             if (debug)
             {
                 Graphics g = this.CreateGraphics();
-                Pen red = new Pen(Color.Red, 3);
-                Pen blue = new Pen(Color.Blue, 3);
-                int counter = 0;
                 foreach (Window window in windows)
                 {
                     if (window.Thumb != null)
                     {
-                        Rectangle dest = window.Thumb.Destination;
-                        Rectangle src = window.Thumb.Rect;
-                        g.FillRectangle(new SolidBrush(Color.FromArgb(255, Byte(255 - 35 * counter),
-                            Byte(50 * counter++), Byte(200 - 10 * counter))), src);
-                        g.DrawRectangle(red, dest);
-                        ++counter;
+                        Rectangle rect = window.Thumb.Rect;
+                        g.FillRectangle(new SolidBrush(Color.FromArgb(100, 100, 100, 100)), rect);
                     }
                 }
             }
@@ -173,14 +189,32 @@ namespace Peepgrid
 
         private void Peepgrid_MouseClick(object sender, MouseEventArgs e)
         {
+            Window target = null;
             foreach (Window window in windows)
             {
                 if (window.Thumb != null && window.Thumb.Rect.Contains(new Point(e.X, e.Y)))
                 {
-                    SetForegroundWindow(window.Handle);
-                    this.Hide();
+                    target = window;
+                    break;
                 }
             }
+            Unaction();
+            SetForegroundWindow(target.Handle);
+            Hide();
+            notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
+                " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
+        }
+
+        private void MoveLast(List<Window> windows, Window window)
+        {
+            windows.Remove(window);
+            windows.Add(window);
+        }
+
+        private void MoveFirst(List<Window> windows, Window window)
+        {
+            windows.Remove(window);
+            windows.Insert(0, window);
         }
 
         private string GetWindowText(IntPtr hwnd)
@@ -210,11 +244,6 @@ namespace Peepgrid
             EnumWindows(Callback, 0);
         }
 
-        private void collectThumbnails()
-        {
-            
-        }
-
         private bool Callback(IntPtr hwnd, int lParam)
         {
             if (this.Handle != hwnd && (GetWindowLongA(hwnd, GWL_STYLE) & TARGETWINDOW) == TARGETWINDOW)
@@ -232,8 +261,10 @@ namespace Peepgrid
 
         private void Peepgrid_Load(object sender, EventArgs e)
         {
-            this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
-            ShowThumbnails();
+            //this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
+            //ShowThumbnailsAnimated();
+            //shell.MinimizeAll();
+            Action();
         }
 
         private void Peepgrid_Resize(object sender, EventArgs e)
@@ -259,6 +290,7 @@ namespace Peepgrid
         {
             GetWindows();
             ClearThumbnails();
+            Rectangle image = Area();
             thumbRects = new RectNode(new Rect(image.Left, image.Top, 
                 image.Right, image.Bottom).ToRectangle());
             List<Rect> destinations = CalculateThumbDestinations(new Rect(image.Left, image.Top, 
@@ -280,8 +312,47 @@ namespace Peepgrid
             }
         }
 
+        private void ShowThumbnailsAnimated()
+        {
+            GetWindows();
+            ClearThumbnails();
+            Rectangle image = Area();
+            List<Rect> destinations = CalculateThumbDestinations(new Rect(image.Left, image.Top,
+                image.Right, image.Bottom), windows.Count);
+            List<Rect>.Enumerator dest = destinations.GetEnumerator();
+            foreach (Window window in windows)
+            {
+                if (dest.MoveNext())
+                {
+                    Rect source = new Rect();
+                    IntPtr thumb = new IntPtr();
+                    int i = DwmRegisterThumbnail(this.Handle, window.Handle, out thumb);
+                    if (i == 0)
+                    {
+                        Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
+                        GetWindowRect(window.Handle, out source);
+                        thumbs.Add(t);
+                        window.Thumb = t;
+                        window.Rect = source.ToRectangle();
+                    }
+                }
+            }
+            new Thread(new ThreadStart(DoMoveThumbs)).Start();
+        }
+
+        void DoMoveThumbs()
+        {
+            MoveThumbs(windows);
+        }
+
+        void DoMoveThumbsBack()
+        {
+            MoveThumbsBack(windows);
+        }
+
         private void UpdateThumbs()
         {
+            Rectangle image = Area();
             RecalculateThumbDestinations(new Rect(image.Left, image.Top, image.Right, image.Bottom));
             foreach (Thumb thumb in thumbs)
             {
@@ -338,7 +409,48 @@ namespace Peepgrid
             return size;
         }
 
-        private void Move();
+        private void MoveThumbs(List<Window> windows)
+        {
+            MoveRects((from window in windows select window.Thumb).ToList(),
+                (from window in windows select window.Rect).ToList(),
+                (from window in windows select window.Thumb.Destination).ToList());
+        }
+
+        private void MoveThumbsBack(List<Window> windows)
+        {
+            MoveRects((from window in windows select window.Thumb).ToList(),
+                (from window in windows select window.Thumb.Destination).ToList(),
+                (from window in windows select window.Rect).ToList());
+        }
+
+        private void MoveRects(List<Thumb> thumbs, List<Rectangle> starts, List<Rectangle> ends)
+        {
+            if (thumbs.Count != starts.Count && starts.Count != ends.Count)
+                throw new ArgumentException(
+                    "There must be as many start rects as end rects and thumbs of course.");
+            for (int n = 0; n <= 10; ++n)
+            {
+                double f = Math.Round(1d * n / 10d, 1);
+                List<Thumb>.Enumerator thumb = thumbs.GetEnumerator();
+                List<Rectangle>.Enumerator start = starts.GetEnumerator();
+                List<Rectangle>.Enumerator end = ends.GetEnumerator();
+                while (thumb.MoveNext() && start.MoveNext() && end.MoveNext())
+                {
+                    if (n < 10)
+                    {
+                        Rectangle intermediate = GetIntermediate(start.Current, end.Current, (float)f);
+                        UpdateThumb(thumb.Current.Value, intermediate.ToRect());
+                    }
+                    else
+                    {
+                        thumb.Current.Destination = end.Current;
+                        UpdateThumb(thumb.Current);
+                    }
+                }
+                int ms = (n == 0) ? 100 : 50;
+                System.Threading.Thread.Sleep(ms);
+            }
+        }
 
         private PSIZE UpdateThumb(IntPtr thumb, Rect dest)
         {
@@ -445,6 +557,19 @@ namespace Peepgrid
             {
                 Exit();
             }
+            else if (e.Control && e.KeyCode == Keys.C)
+            {
+                ClearThumbnails();
+            }
+            else if (e.Control && e.KeyCode == Keys.D)
+            {
+                debug = !debug;
+                Invalidate();
+            }
+            else if (e.Control && e.KeyCode == Keys.S)
+            {
+                ShowThumbnails();
+            }
         }
 
         private void testButton_Click(object sender, EventArgs e)
@@ -482,7 +607,41 @@ namespace Peepgrid
 
         private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
         {
+            Action();
+        }
+
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Exit();
+        }
+
+        private void showToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Action();
+        }
+
+        void Action()
+        {
+            ClearThumbnails();
             this.Show();
+            ShowThumbnailsAnimated();
+            shell.MinimizeAll();
+        }
+
+        void Unaction()
+        {
+            new Thread(new ThreadStart(DoMoveThumbsBack)).Start();
+            shell.UndoMinimizeALL();
+            System.Threading.Thread.Sleep(400);
+            ClearThumbnails();
+        }
+
+        void ShowWindows(List<Window> windows, int cmd)
+        {
+            foreach (Window window in windows)
+            {
+                ShowWindow(window.Handle, cmd);
+            }
         }
     }
 

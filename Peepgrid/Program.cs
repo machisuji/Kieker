@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 
-namespace Peepgrid
+namespace Kieker
 {
     static class Program
     {
@@ -15,7 +15,7 @@ namespace Peepgrid
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Peepgrid());
+            Application.Run(new ThumbView());
         }
     }
 }
