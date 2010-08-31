@@ -26,15 +26,15 @@ namespace Kieker
             InitializeComponent();
 
             this.KeyPreview = true;
-            this.KeyDown += new KeyEventHandler(this.Peepgrid_KeyDown);
-            this.MouseClick += new MouseEventHandler(Peepgrid_MouseClick);
-            this.Paint += new PaintEventHandler(Peepgrid_Paint);
+            this.KeyDown += new KeyEventHandler(this.Kieker_KeyDown);
+            this.MouseClick += new MouseEventHandler(Kieker_MouseClick);
+            this.Paint += new PaintEventHandler(Kieker_Paint);
             this.TopMost = true;
         }
 
-        private Rectangle Area()
+        public Rectangle Area
         {
-            return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea;
+            get { return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea; }
         }
 
         private string GetCurrentWallpaper()
@@ -45,7 +45,7 @@ namespace Kieker
             return WallpaperPath;
         }
 
-        void Peepgrid_Paint(object sender, PaintEventArgs e)
+        void Kieker_Paint(object sender, PaintEventArgs e)
         {
             if (debug)
             {
@@ -68,7 +68,7 @@ namespace Kieker
             else return value;
         }
 
-        private void Peepgrid_MouseClick(object sender, MouseEventArgs e)
+        private void Kieker_MouseClick(object sender, MouseEventArgs e)
         {
             Window target = null;
             foreach (Window window in windows)
@@ -79,11 +79,14 @@ namespace Kieker
                     break;
                 }
             }
-            Unaction();
-            User32.SetForegroundWindow(target.Handle);
-            Hide();
-            notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
-                " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
+            if (target != null)
+            {
+                Unaction();
+                User32.SetForegroundWindow(target.Handle);
+                Hide();
+                notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
+                    " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
+            }
         }
 
         private string GetWindowText(IntPtr hwnd)
@@ -112,23 +115,36 @@ namespace Kieker
             windows = new List<Window>();
             User32.EnumWindowsCallback callback = (hwnd, lParam) =>
             {
-                if (this.Handle != hwnd &&
-                    (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & 
-                    Constants.TARGETWINDOW) == Constants.TARGETWINDOW)
+                if (this.Handle != hwnd && AcceptWindow(hwnd))
                 {
                     StringBuilder sb = new StringBuilder(200);
                     User32.GetWindowText(hwnd, sb, sb.Capacity);
-                    Window t = new Window();
-                    t.Handle = hwnd;
-                    t.Title = sb.ToString();
-                    windows.Add(t);
+                    Window window = new Window();
+                    window.Handle = hwnd;
+                    window.Title = sb.ToString();
+                    if (!SkipWindow(window))
+                        windows.Add(window);
                 }
                 return true;
             };
             User32.EnumWindows(callback, 0);
         }
 
-        private void Peepgrid_Load(object sender, EventArgs e)
+        private bool AcceptWindow(IntPtr hwnd)
+        {
+            ulong require = Constants.WS_BORDER | Constants.WS_VISIBLE;
+            ulong refuse = Constants.WS_ICONIC;
+            return //!User32.IsIconic(hwnd) &&
+                (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & require) == require &&
+                (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & refuse) != refuse;
+        }
+
+        private bool SkipWindow(Window window)
+        {
+            return window.Title.Equals("AMD:CCC-AEMCapturingWindow");
+        }
+
+        private void Kieker_Load(object sender, EventArgs e)
         {
             //this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
             //ShowThumbnailsAnimated();
@@ -149,11 +165,10 @@ namespace Kieker
         {
             GetWindows();
             ClearThumbnails();
-            Rectangle image = Area();
-            thumbRects = new RectNode(new Rect(image.Left, image.Top, 
-                image.Right, image.Bottom).ToRectangle());
-            List<Rect> destinations = CalculateThumbDestinations(new Rect(image.Left, image.Top, 
-                image.Right, image.Bottom), windows.Count);
+            thumbRects = new RectNode(new Rect(Area.Left, Area.Top, 
+                Area.Right, Area.Bottom).ToRectangle());
+            List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top, 
+                Area.Right, Area.Bottom), windows.Count);
             List<Rect>.Enumerator de = destinations.GetEnumerator();
             de.MoveNext();
             foreach (Window w in windows)
@@ -175,9 +190,8 @@ namespace Kieker
         {
             GetWindows();
             ClearThumbnails();
-            Rectangle image = Area();
-            List<Rect> destinations = CalculateThumbDestinations(new Rect(image.Left, image.Top,
-                image.Right, image.Bottom), windows.Count);
+            List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top,
+                Area.Right, Area.Bottom), windows.Count);
             List<Rect>.Enumerator dest = destinations.GetEnumerator();
             foreach (Window window in windows)
             {
@@ -211,8 +225,7 @@ namespace Kieker
 
         private void UpdateThumbs()
         {
-            Rectangle image = Area();
-            RecalculateThumbDestinations(new Rect(image.Left, image.Top, image.Right, image.Bottom));
+            RecalculateThumbDestinations(new Rect(Area.Left, Area.Top, Area.Right, Area.Bottom));
             foreach (Thumb thumb in thumbs)
             {
                 UpdateThumb(thumb);
@@ -388,7 +401,7 @@ namespace Kieker
             return ret;
         }
 
-        void Peepgrid_KeyDown(object sender, KeyEventArgs e)
+        void Kieker_KeyDown(object sender, KeyEventArgs e)
         {
             Console.WriteLine(e.KeyCode.ToString());
             e.Handled = true;
@@ -409,12 +422,6 @@ namespace Kieker
             {
                 ShowThumbnails();
             }
-        }
-
-        private void testButton_Click(object sender, EventArgs e)
-        {
-            this.Hide();
-            notifyIcon.ShowBalloonTip(1000, "Attention!", "Peepgrid has been minimized.", ToolTipIcon.Info);
         }
 
         private List<Rectangle> packRects(Rectangle enclosingRect, List<Rectangle> rects)

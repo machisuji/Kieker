@@ -80,7 +80,7 @@
             this.Text = "Peepgrid";
             this.TransparencyKey = System.Drawing.Color.Cyan;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
-            this.Load += new System.EventHandler(this.Peepgrid_Load);
+            this.Load += new System.EventHandler(this.Kieker_Load);
             this.contextMenuStrip.ResumeLayout(false);
             this.ResumeLayout(false);
 

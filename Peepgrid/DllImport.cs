@@ -60,7 +60,7 @@ namespace Kieker
 
             public const ulong WS_VISIBLE = 0x10000000L;
             public const ulong WS_BORDER = 0x00800000L;
-            public const ulong TARGETWINDOW = WS_BORDER | WS_VISIBLE;
+            public const ulong WS_ICONIC = 0x20000000L;
 
             public const int DWM_TNP_VISIBLE = 0x8;
             public const int DWM_TNP_OPACITY = 0x4;
@@ -70,6 +70,9 @@ namespace Kieker
 
         public class User32
         {
+            [DllImport("user32.dll")]
+            public static extern bool IsIconic(IntPtr hwnd);
+
             [DllImport("user32.dll")]
             public static extern int ShowWindow(IntPtr hwnd, int nCmdShow);
 
