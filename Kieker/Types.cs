@@ -27,6 +27,7 @@ namespace Kieker
         public IntPtr Handle;
         public Thumb Thumb;
         public Rectangle Rect;
+        public Nullable<Point> LastPosition;
 
         public override string ToString()
         {

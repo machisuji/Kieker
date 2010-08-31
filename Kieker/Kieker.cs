@@ -32,17 +32,12 @@ namespace Kieker
             this.TopMost = true;
         }
 
-        public Rectangle Area
+        private void Kieker_Load(object sender, EventArgs e)
         {
-            get { return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea; }
-        }
-
-        private string GetCurrentWallpaper()
-        {
-            RegistryKey rkWallPaper = Registry.CurrentUser.OpenSubKey("Control Panel\\Desktop", false);
-            string WallpaperPath = rkWallPaper.GetValue("WallPaper").ToString();
-            rkWallPaper.Close();
-            return WallpaperPath;
+            //this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
+            //ShowThumbnailsAnimated();
+            //shell.MinimizeAll();
+            Action();
         }
 
         void Kieker_Paint(object sender, PaintEventArgs e)
@@ -61,13 +56,6 @@ namespace Kieker
             }
         }
 
-        private int Byte(int value)
-        {
-            if (value < 0) return 0;
-            else if (value > 255) return 255;
-            else return value;
-        }
-
         private void Kieker_MouseClick(object sender, MouseEventArgs e)
         {
             Window target = null;
@@ -81,6 +69,7 @@ namespace Kieker
             }
             if (target != null)
             {
+                SetForegroundThumb(target);
                 Unaction();
                 User32.SetForegroundWindow(target.Handle);
                 Hide();
@@ -89,25 +78,93 @@ namespace Kieker
             }
         }
 
-        private string GetWindowText(IntPtr hwnd)
+        void Kieker_KeyDown(object sender, KeyEventArgs e)
         {
-            int capacity = User32.GetWindowTextLength(new HandleRef(this, hwnd)) * 2;
-            StringBuilder stringBuilder = new StringBuilder(capacity);
-            User32.GetWindowText(new HandleRef(this, hwnd), stringBuilder, stringBuilder.Capacity);
-
-            return stringBuilder.ToString();
+            Console.WriteLine(e.KeyCode.ToString());
+            e.Handled = true;
+            if (e.Control && e.KeyCode == Keys.Q)
+            {
+                Exit();
+            }
+            else if (e.Control && e.KeyCode == Keys.C)
+            {
+                ClearThumbnails();
+            }
+            else if (e.Control && e.KeyCode == Keys.D)
+            {
+                debug = !debug;
+                Invalidate();
+            }
+            else if (e.Control && e.KeyCode == Keys.S)
+            {
+                ShowThumbnails();
+            }
         }
 
-        private bool contains(Rect rect, Point point)
+        private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
         {
-            return point.X >= rect.Left && point.X <= rect.Right &&
-                point.Y >= rect.Top && point.Y <= rect.Bottom;
+            Action();
         }
 
-        private void Exit()
+        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            Exit();
+        }
+
+        private void showToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Action();
+        }
+
+        void Action()
+        {
+            IntPtr hforegroundWindow = User32.GetForegroundWindow();
             ClearThumbnails();
-            Application.Exit();
+            this.Show();
+            ShowThumbnailsAnimated(hforegroundWindow);
+            //shell.MinimizeAll();
+            //ShowWindows(windows, Constants.SW_FORCEMINIMIZE);
+            HideWindows();
+        }
+
+        void Unaction()
+        {
+            //new Thread(new ThreadStart(DoMoveThumbsBack)).Start();
+            DoMoveThumbsBack();
+            UnhideWindows();
+            ClearThumbnails();
+            //shell.UndoMinimizeALL();
+            //System.Threading.Thread.Sleep(400);
+            //ShowWindows(windows, Constants.SW_SHOWDEFAULT);
+            //UnhideWindows();
+            //ClearThumbnails();
+        }
+
+        private void HideWindows()
+        {
+            foreach (Window window in windows)
+            {
+                Rect bounds = new Rect();
+                User32.GetWindowRect(window.Handle, out bounds);
+                window.LastPosition = new Nullable<Point>(new Point(bounds.Left, bounds.Top));
+                User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16000, -16000, -1, -1,
+                    Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | Constants.SWP_NOREDRAW |
+                    Constants.SWP_NOSENDCHANGING | Constants.SWP_NOACTIVATE);
+            }
+        }
+
+        private void UnhideWindows()
+        {
+            foreach (Window window in windows)
+            {
+                if (window.LastPosition.HasValue)
+                {
+                    Point pos = window.LastPosition.Value;
+                    User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, pos.X, pos.Y, 
+                        -1, -1, Constants.SWP_NOSIZE);
+                    window.LastPosition = new Nullable<Point>();
+                }
+            }
         }
 
         private void GetWindows()
@@ -144,14 +201,6 @@ namespace Kieker
             return window.Title.Equals("AMD:CCC-AEMCapturingWindow");
         }
 
-        private void Kieker_Load(object sender, EventArgs e)
-        {
-            //this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
-            //ShowThumbnailsAnimated();
-            //shell.MinimizeAll();
-            Action();
-        }
-
         private void ClearThumbnails()
         {
             foreach (Thumb thumb in thumbs)
@@ -159,6 +208,47 @@ namespace Kieker
                 if (thumb.Value != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Value);
             }
             thumbs.Clear();
+        }
+
+        private void Exit()
+        {
+            ClearThumbnails();
+            Application.Exit();
+        }
+
+        public Rectangle Area
+        {
+            get { return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea; }
+        }
+
+        private string GetCurrentWallpaper()
+        {
+            RegistryKey rkWallPaper = Registry.CurrentUser.OpenSubKey("Control Panel\\Desktop", false);
+            string WallpaperPath = rkWallPaper.GetValue("WallPaper").ToString();
+            rkWallPaper.Close();
+            return WallpaperPath;
+        }
+
+        private int Byte(int value)
+        {
+            if (value < 0) return 0;
+            else if (value > 255) return 255;
+            else return value;
+        }
+
+        private string GetWindowText(IntPtr hwnd)
+        {
+            int capacity = User32.GetWindowTextLength(new HandleRef(this, hwnd)) * 2;
+            StringBuilder stringBuilder = new StringBuilder(capacity);
+            User32.GetWindowText(new HandleRef(this, hwnd), stringBuilder, stringBuilder.Capacity);
+
+            return stringBuilder.ToString();
+        }
+
+        private bool contains(Rect rect, Point point)
+        {
+            return point.X >= rect.Left && point.X <= rect.Right &&
+                point.Y >= rect.Top && point.Y <= rect.Bottom;
         }
 
         private void ShowThumbnails()
@@ -186,15 +276,30 @@ namespace Kieker
             }
         }
 
-        private void ShowThumbnailsAnimated()
+        private void SetForegroundThumb(Window window)
+        {
+            IntPtr handle = window.Thumb.Value;
+            DwmApi.DwmUnregisterThumbnail(handle);
+            int ret = DwmApi.DwmRegisterThumbnail(this.Handle, window.Handle, out handle);
+            if (ret == 0)
+            {
+                window.Thumb.Value = handle;
+                UpdateThumb(handle, window.Thumb.Destination.ToRect());
+            }
+        }
+
+        private void ShowThumbnailsAnimated(IntPtr hforegroundWindow)
         {
             GetWindows();
             ClearThumbnails();
             List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top,
                 Area.Right, Area.Bottom), windows.Count);
             List<Rect>.Enumerator dest = destinations.GetEnumerator();
+            Window previousForegroundWindow = null;
             foreach (Window window in windows)
             {
+                if (window.Handle.Equals(hforegroundWindow))
+                    previousForegroundWindow = window;
                 if (dest.MoveNext())
                 {
                     Rect source = new Rect();
@@ -204,11 +309,16 @@ namespace Kieker
                     {
                         Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
                         User32.GetWindowRect(window.Handle, out source);
-                        thumbs.Add(t);
                         window.Thumb = t;
                         window.Rect = source.ToRectangle();
+                        thumbs.Add(t);
                     }
                 }
+            }
+            if (previousForegroundWindow != null)
+            {
+                Console.WriteLine("Animation with '" + previousForegroundWindow.Title + "' in foreground");
+                SetForegroundThumb(previousForegroundWindow);
             }
             new Thread(new ThreadStart(DoMoveThumbs)).Start();
         }
@@ -401,29 +511,6 @@ namespace Kieker
             return ret;
         }
 
-        void Kieker_KeyDown(object sender, KeyEventArgs e)
-        {
-            Console.WriteLine(e.KeyCode.ToString());
-            e.Handled = true;
-            if (e.Control && e.KeyCode == Keys.Q)
-            {
-                Exit();
-            }
-            else if (e.Control && e.KeyCode == Keys.C)
-            {
-                ClearThumbnails();
-            }
-            else if (e.Control && e.KeyCode == Keys.D)
-            {
-                debug = !debug;
-                Invalidate();
-            }
-            else if (e.Control && e.KeyCode == Keys.S)
-            {
-                ShowThumbnails();
-            }
-        }
-
         private List<Rectangle> packRects(Rectangle enclosingRect, List<Rectangle> rects)
         {
             List<Rectangle> packedRects = new List<Rectangle>();
@@ -449,37 +536,6 @@ namespace Kieker
                 int areaB = b.Width * b.Height;
                 return reverseOrder ? areaA - areaB : areaB - areaA;
             }
-        }
-
-        private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
-        {
-            Action();
-        }
-
-        private void exitToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Exit();
-        }
-
-        private void showToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Action();
-        }
-
-        void Action()
-        {
-            ClearThumbnails();
-            this.Show();
-            ShowThumbnailsAnimated();
-            shell.MinimizeAll();
-        }
-
-        void Unaction()
-        {
-            new Thread(new ThreadStart(DoMoveThumbsBack)).Start();
-            shell.UndoMinimizeALL();
-            System.Threading.Thread.Sleep(400);
-            ClearThumbnails();
         }
 
         void ShowWindows(List<Window> windows, int cmd)
