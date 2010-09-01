@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using Microsoft.Win32;
 using System.Threading;
 using Kieker.DllImport;
+using Gma.UserActivityMonitor;
 
 namespace Kieker
 {
@@ -20,6 +21,9 @@ namespace Kieker
         private RectNode thumbRects;
         private bool debug = false;
         private Shell32.ShellClass shell = new Shell32.ShellClass();
+        private bool modifier = false;
+        private bool key = false;
+        private bool action = false;
 
         public ThumbView()
         {
@@ -34,10 +38,25 @@ namespace Kieker
 
         private void Kieker_Load(object sender, EventArgs e)
         {
-            //this.BackgroundImage = Image.FromFile(GetCurrentWallpaper());
-            //ShowThumbnailsAnimated();
-            //shell.MinimizeAll();
+            HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
+            HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
             Action();
+        }
+
+        void HookManager_KeyUp(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.LWin) modifier = false;
+            if (e.KeyCode == Keys.K) key = false;
+        }
+
+        void HookManager_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.LWin) modifier = true;
+            if (e.KeyCode == Keys.K) key = true;
+            if (!Visible && !action && modifier && key)
+            {
+                Action();
+            }
         }
 
         void Kieker_Paint(object sender, PaintEventArgs e)
@@ -72,7 +91,9 @@ namespace Kieker
                 SetForegroundThumb(target);
                 Unaction();
                 User32.SetForegroundWindow(target.Handle);
+                System.Threading.Thread.Sleep(100);
                 Hide();
+                ClearThumbnails();
                 notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
                     " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
             }
@@ -118,26 +139,19 @@ namespace Kieker
 
         void Action()
         {
+            action = true;
             IntPtr hforegroundWindow = User32.GetForegroundWindow();
             ClearThumbnails();
             this.Show();
             ShowThumbnailsAnimated(hforegroundWindow);
-            //shell.MinimizeAll();
-            //ShowWindows(windows, Constants.SW_FORCEMINIMIZE);
             HideWindows();
+            action = false;
         }
 
         void Unaction()
         {
-            //new Thread(new ThreadStart(DoMoveThumbsBack)).Start();
             DoMoveThumbsBack();
             UnhideWindows();
-            ClearThumbnails();
-            //shell.UndoMinimizeALL();
-            //System.Threading.Thread.Sleep(400);
-            //ShowWindows(windows, Constants.SW_SHOWDEFAULT);
-            //UnhideWindows();
-            //ClearThumbnails();
         }
 
         private void HideWindows()
@@ -185,6 +199,8 @@ namespace Kieker
                 return true;
             };
             User32.EnumWindows(callback, 0);
+            //SortByZOrder(windows);
+            //windows.Reverse();
         }
 
         private bool AcceptWindow(IntPtr hwnd)
@@ -219,6 +235,30 @@ namespace Kieker
         public Rectangle Area
         {
             get { return System.Windows.Forms.Screen.PrimaryScreen.WorkingArea; }
+        }
+
+        private void SortByZOrder(List<Window> windows)
+        {
+            List<Window> unsorted = new List<Window>(windows);
+            List<Window> sorted = new List<Window>(windows.Count);
+            IntPtr hwnd = User32.GetTopWindow(IntPtr.Zero);
+            while (hwnd != null && !hwnd.Equals(IntPtr.Zero))
+            {
+                List<Window>.Enumerator window = unsorted.GetEnumerator();
+                while (window.MoveNext())
+                {
+                    if (hwnd.Equals(window.Current.Handle))
+                    {
+                        sorted.Add(window.Current);
+                        unsorted.Remove(window.Current);
+                        break;
+                    }
+                }
+                hwnd = User32.GetWindow(hwnd, Constants.GW_HWNDNEXT);
+            }
+            sorted.AddRange(unsorted); // in case we missed something
+            windows.Clear();
+            windows.AddRange(sorted);
         }
 
         private string GetCurrentWallpaper()
@@ -410,15 +450,17 @@ namespace Kieker
             if (thumbs.Count != starts.Count && starts.Count != ends.Count)
                 throw new ArgumentException(
                     "There must be as many start rects as end rects and thumbs of course.");
-            for (int n = 0; n <= 10; ++n)
+            
+            int steps = 25;
+            for (int n = 0; n <= steps; ++n)
             {
-                double f = Math.Round(1d * n / 10d, 1);
+                double f = (1d * n / (1d * steps)).EaseInOut(3);
                 List<Thumb>.Enumerator thumb = thumbs.GetEnumerator();
                 List<Rectangle>.Enumerator start = starts.GetEnumerator();
                 List<Rectangle>.Enumerator end = ends.GetEnumerator();
                 while (thumb.MoveNext() && start.MoveNext() && end.MoveNext())
                 {
-                    if (n < 10)
+                    if (n < steps)
                     {
                         Rectangle intermediate = GetIntermediate(start.Current, end.Current, (float)f);
                         UpdateThumb(thumb.Current.Value, intermediate.ToRect());
@@ -429,7 +471,7 @@ namespace Kieker
                         UpdateThumb(thumb.Current);
                     }
                 }
-                int ms = (n == 0) ? 100 : 50;
+                int ms = (n == 0) ? 100 : 20;
                 System.Threading.Thread.Sleep(ms);
             }
         }

@@ -1,5 +1,6 @@
 ﻿using Kieker.DllImport;
 using System.Drawing;
+using System;
 
 namespace Kieker
 {
@@ -42,6 +43,62 @@ namespace Kieker
         public static Rectangle GetNormalized(this Rectangle rect)
         {
             return new Rectangle(0, 0, rect.Width, rect.Height);
+        }
+
+        /// <summary>
+        /// Takes a linear value and eases it in using a function raising x to the given power.
+        /// For instance a quadratic function if the value for power is 2.
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="power"></param>
+        /// <returns></returns>
+        public static double EaseIn(this double x, int power)
+        {
+            return Power.EaseIn(x, power);
+        }
+
+        /// <summary>
+        /// Takes a linear value and eases it out using a function raising x to the given power.
+        /// For instance a quadratic function if the value for power is 2.
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="power"></param>
+        /// <returns></returns>
+        public static double EaseOut(this double x, int power)
+        {
+            return Power.EaseOut(x, power);
+        }
+
+        /// <summary>
+        /// Takes a linear value and eases it in and out using a function raising x to the given power.
+        /// For instance a quadratic function if the value for power is 2.
+        /// </summary>
+        /// <param name="x"></param>
+        /// <param name="power"></param>
+        /// <returns></returns>
+        public static double EaseInOut(this double x, int power)
+        {
+            return Power.EaseInOut(x, power);
+        }
+    }
+
+    static class Power
+    {
+        public static float EaseIn(double s, int power)
+        {
+            return (float)Math.Pow(s, power);
+        }
+        public static float EaseOut(double s, int power)
+        {
+            var sign = power % 2 == 0 ? -1 : 1;
+            return (float)(sign * (Math.Pow(s - 1, power) + sign));
+        }
+        public static float EaseInOut(double s, int power)
+        {
+            s *= 2;
+            if (s < 1) return EaseIn(s, power) / 2;
+            var sign = power % 2 == 0 ? -1 : 1;
+            return (float)(sign / 2.0 * (Math.Pow(s - 2, power) + sign * 2));
         }
     }
 }

@@ -88,10 +88,19 @@ namespace Kieker
             public const uint SWP_NOSIZE = 0x0001;
             public const uint SWP_NOZORDER = 0x0004;
             public const uint SWP_SHOWWINDOW = 0x0040;
+
+            public const uint GW_HWNDNEXT = 2;
+            public const uint GW_HWNDPREV = 3;
         }
 
         public class User32
         {
+            [DllImport("user32.dll")]
+            public static extern IntPtr GetTopWindow(IntPtr hwnd);
+
+            [DllImport("user32.dll")]
+            public static extern IntPtr GetWindow(IntPtr hwnd, uint wcmd);
+
             [DllImport("user32.dll")]
             public static extern bool SetWindowPos(IntPtr hwnd, IntPtr hwndInsertAfter,
                 int x, int y, int width, int height, uint uFlags);
