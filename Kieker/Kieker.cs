@@ -24,6 +24,11 @@ namespace Kieker
         private bool modifier = false;
         private bool key = false;
         private bool action = false;
+        private bool unaction = false;
+        private readonly Object animationLock = new Object();
+        private bool pauseAnimation = false;
+        private delegate void VoidDelegate();
+        private IntPtr windowHandle;
 
         public ThumbView()
         {
@@ -38,6 +43,7 @@ namespace Kieker
 
         private void Kieker_Load(object sender, EventArgs e)
         {
+            windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
             Action();
@@ -46,15 +52,16 @@ namespace Kieker
         void HookManager_KeyUp(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.LWin) modifier = false;
-            if (e.KeyCode == Keys.K) key = false;
+            else if (e.KeyCode == Keys.Oem5) key = false;
         }
 
         void HookManager_KeyDown(object sender, KeyEventArgs e)
         {
             if (e.KeyCode == Keys.LWin) modifier = true;
-            if (e.KeyCode == Keys.K) key = true;
+            else if (e.KeyCode == Keys.Oem5) key = true;
             if (!Visible && !action && modifier && key)
             {
+                e.Handled = true;
                 Action();
             }
         }
@@ -86,22 +93,11 @@ namespace Kieker
                     break;
                 }
             }
-            if (target != null)
-            {
-                SetForegroundThumb(target);
-                Unaction();
-                User32.SetForegroundWindow(target.Handle);
-                System.Threading.Thread.Sleep(100);
-                Hide();
-                ClearThumbnails();
-                notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
-                    " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);
-            }
+            if (target != null && !unaction) Unaction(target);
         }
 
         void Kieker_KeyDown(object sender, KeyEventArgs e)
         {
-            Console.WriteLine(e.KeyCode.ToString());
             e.Handled = true;
             if (e.Control && e.KeyCode == Keys.Q)
             {
@@ -119,6 +115,17 @@ namespace Kieker
             else if (e.Control && e.KeyCode == Keys.S)
             {
                 ShowThumbnails();
+            }
+            else if (e.KeyCode == Keys.Space)
+            {
+                if (!pauseAnimation) pauseAnimation = true;
+                else
+                {
+                    lock (animationLock)
+                    {
+                        Monitor.Pulse(animationLock);
+                    }
+                }
             }
         }
 
@@ -139,19 +146,35 @@ namespace Kieker
 
         void Action()
         {
-            action = true;
-            IntPtr hforegroundWindow = User32.GetForegroundWindow();
-            ClearThumbnails();
-            this.Show();
-            ShowThumbnailsAnimated(hforegroundWindow);
-            HideWindows();
-            action = false;
+            Action theAction = () =>
+            {
+                action = true;
+                IntPtr hforegroundWindow = User32.GetForegroundWindow();
+                ClearThumbnails();
+                Invoke(new VoidDelegate(Show));
+                ShowThumbnailsAnimated(hforegroundWindow);
+                HideWindows();
+                action = false;
+            };
+            Fork(theAction);
         }
 
-        void Unaction()
+        void Unaction(Window target)
         {
-            DoMoveThumbsBack();
-            UnhideWindows();
+            Action theAction = () => {
+                unaction = true;
+                SetForegroundThumb(target);
+                DoMoveThumbsBack();
+                UnhideWindows();
+                User32.SetForegroundWindow(target.Handle);
+                System.Threading.Thread.Sleep(100);
+                Invoke(new VoidDelegate(Hide));
+                ClearThumbnails();
+                /*notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
+                    " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);*/
+                unaction = false;
+            };
+            Fork(theAction);
         }
 
         private void HideWindows()
@@ -186,7 +209,7 @@ namespace Kieker
             windows = new List<Window>();
             User32.EnumWindowsCallback callback = (hwnd, lParam) =>
             {
-                if (this.Handle != hwnd && AcceptWindow(hwnd))
+                if (windowHandle != hwnd && AcceptWindow(hwnd))
                 {
                     StringBuilder sb = new StringBuilder(200);
                     User32.GetWindowText(hwnd, sb, sb.Capacity);
@@ -199,6 +222,7 @@ namespace Kieker
                 return true;
             };
             User32.EnumWindows(callback, 0);
+            windows.Reverse();
             //SortByZOrder(windows);
             //windows.Reverse();
         }
@@ -257,8 +281,13 @@ namespace Kieker
                 hwnd = User32.GetWindow(hwnd, Constants.GW_HWNDNEXT);
             }
             sorted.AddRange(unsorted); // in case we missed something
-            windows.Clear();
-            windows.AddRange(sorted);
+            //windows.Clear();
+            //windows.AddRange(sorted);
+            Console.WriteLine("Windows ordered by z-order beginning with the topmost one: ");
+            foreach (Window window in sorted)
+            {
+                Console.WriteLine(window.Title);
+            }
         }
 
         private string GetCurrentWallpaper()
@@ -304,7 +333,7 @@ namespace Kieker
             foreach (Window w in windows)
             {
                 IntPtr thumb = new IntPtr();
-                int i = DwmApi.DwmRegisterThumbnail(this.Handle, w.Handle, out thumb);
+                int i = DwmApi.DwmRegisterThumbnail(windowHandle, w.Handle, out thumb);
                 if (i == 0)
                 {
                     Thumb t = new Thumb(thumb, de.Current.ToRectangle());
@@ -320,7 +349,7 @@ namespace Kieker
         {
             IntPtr handle = window.Thumb.Value;
             DwmApi.DwmUnregisterThumbnail(handle);
-            int ret = DwmApi.DwmRegisterThumbnail(this.Handle, window.Handle, out handle);
+            int ret = DwmApi.DwmRegisterThumbnail(windowHandle, window.Handle, out handle);
             if (ret == 0)
             {
                 window.Thumb.Value = handle;
@@ -344,7 +373,7 @@ namespace Kieker
                 {
                     Rect source = new Rect();
                     IntPtr thumb = new IntPtr();
-                    int i = DwmApi.DwmRegisterThumbnail(this.Handle, window.Handle, out thumb);
+                    int i = DwmApi.DwmRegisterThumbnail(windowHandle, window.Handle, out thumb);
                     if (i == 0)
                     {
                         Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
@@ -357,7 +386,6 @@ namespace Kieker
             }
             if (previousForegroundWindow != null)
             {
-                Console.WriteLine("Animation with '" + previousForegroundWindow.Title + "' in foreground");
                 SetForegroundThumb(previousForegroundWindow);
             }
             new Thread(new ThreadStart(DoMoveThumbs)).Start();
@@ -454,6 +482,14 @@ namespace Kieker
             int steps = 25;
             for (int n = 0; n <= steps; ++n)
             {
+                if (pauseAnimation)
+                {
+                    lock (animationLock)
+                    {
+                        Monitor.Wait(animationLock, 30000);
+                        pauseAnimation = false;
+                    }
+                }
                 double f = (1d * n / (1d * steps)).EaseInOut(3);
                 List<Thumb>.Enumerator thumb = thumbs.GetEnumerator();
                 List<Rectangle>.Enumerator start = starts.GetEnumerator();
@@ -586,6 +622,11 @@ namespace Kieker
             {
                 User32.ShowWindow(window.Handle, cmd);
             }
+        }
+
+        private void Fork(Action action)
+        {
+            new Thread(new ThreadStart(action)).Start();
         }
     }
 }
