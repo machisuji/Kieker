@@ -1,11 +1,19 @@
 ﻿using Kieker.DllImport;
 using System.Drawing;
 using System;
+using System.Threading;
 
 namespace Kieker
 {
     public static class ExtensionsClass
     {
+        public static void Fork(this Action action)
+        {
+            Thread thread = new Thread(new ThreadStart(action));
+            thread.IsBackground = true;
+            thread.Start();
+        }
+
         public static string Max(this string s, int length)
         {
             return length <= s.Length ? s.Substring(0, length) : s;
@@ -43,6 +51,19 @@ namespace Kieker
         public static Rectangle GetNormalized(this Rectangle rect)
         {
             return new Rectangle(0, 0, rect.Width, rect.Height);
+        }
+
+        public static Rectangle GetScaled(this Rectangle rect, double factor)
+        {
+            int width = (int)Math.Round(rect.Width * factor, 0);
+            int height = (int)Math.Round(rect.Height * factor, 0);
+
+            return new Rectangle(rect.X, rect.Y, width, height);
+        }
+
+        public static int Area(this Rectangle rect)
+        {
+            return rect.Width * rect.Height;
         }
 
         /// <summary>

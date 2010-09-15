@@ -5,8 +5,20 @@ namespace Kieker
 {
     public class Thumb
     {
+        /// <summary>
+        /// Handle to the DWM Thumb
+        /// </summary>
         public IntPtr Value;
+
+        /// <summary>
+        /// Destination rect
+        /// </summary>
         public Rectangle Destination;
+
+        /// <summary>
+        /// Actual rect within the destination rect, which may be smaller due to
+        /// the aspect ratio of the window.
+        /// </summary>
         public Rectangle Rect;
 
         public Thumb(IntPtr value, Rectangle destination)
@@ -26,6 +38,10 @@ namespace Kieker
         public string Title;
         public IntPtr Handle;
         public Thumb Thumb;
+
+        /// <summary>
+        /// The original rect of this window on the screen.
+        /// </summary>
         public Rectangle Rect;
         public Nullable<Point> LastPosition;
 
@@ -73,7 +89,7 @@ namespace Kieker
 
         public bool IsLeaf() { return childA == null && childB == null; }
 
-        public void Normalize(Rectangle rect)
+        public void Normalize(ref Rectangle rect)
         {
             rect.X = 0;
             rect.Y = 0;
@@ -81,7 +97,7 @@ namespace Kieker
 
         public bool Insert(Rectangle rect)
         {
-            Normalize(rect);
+            Normalize(ref rect);
             if (IsLeaf()) // insert rect here
             {
                 if (!IsTaken() && this.rect.GetNormalized().Contains(rect)) // check if it fits
@@ -105,6 +121,22 @@ namespace Kieker
                     childA.childA = new RectNode(new Rectangle(this.rect.X, this.rect.Y,
                         rect.Width, rect.Height));
                     childA.childA.taken = true;
+                    if (childA.childA.rect.Width == childA.rect.Width)
+                    {
+                        childA.childB = new RectNode(new Rectangle(
+                            this.rect.X,
+                            this.rect.Y + childA.childA.rect.Height,
+                            this.rect.Width,
+                            this.rect.Height - childA.childA.rect.Height));
+                    }
+                    else if (childA.childA.rect.Height == childA.rect.Height)
+                    {
+                        childA.childB = new RectNode(new Rectangle(
+                            this.rect.X + childA.childA.rect.Width,
+                            this.rect.Y,
+                            this.rect.Width - childA.childA.rect.Width,
+                            this.rect.Height));
+                    }
                     return true;
                 }
                 else
@@ -114,7 +146,7 @@ namespace Kieker
             }
             else
             {
-                return childA.Insert(rect) || childB.Insert(rect);
+                return (childA != null && childA.Insert(rect)) || (childB != null && childB.Insert(rect));
             }
         }
 
@@ -137,6 +169,58 @@ namespace Kieker
                 if (childB != null) ret.AddRange(childB.CollectRects());
                 return ret;
             }
+        }
+
+        public IEnumerable<Rectangle> GetStructure()
+        {
+            return GetStructureFoo();
+        }
+
+        public IEnumerable<Rectangle> GetStructureFoo()
+        {
+            LinkedList<Rectangle> rects = new LinkedList<Rectangle>();
+            LinkedList<RectNode> nodes = new LinkedList<RectNode>();
+            if (childA != null) nodes.AddLast(childA);
+            if (childB != null) nodes.AddLast(childB);
+            while (nodes.Count > 0)
+            {
+                foreach (RectNode node in nodes)
+                {
+                    rects.AddLast(node.rect);
+                }
+                nodes = new LinkedList<RectNode>(GetChildren(nodes)); // get next level
+            }
+            return rects;
+        }
+
+        protected void AddStructureTo(LinkedList<Rectangle> rects)
+        {
+            if (childA != null) childA.AddStructureTo(rects);
+            if (childB != null) childB.AddStructureTo(rects);
+            rects.AddFirst(this.rect);
+        }
+
+        public IEnumerable<RectNode> GetChildren(IEnumerable<RectNode> parents)
+        {
+            List<RectNode> children = new List<RectNode>();
+            foreach (RectNode parent in parents)
+            {
+                children.AddRange(parent.GetChildren());
+            }
+            return children;
+        }
+
+        /// <summary>
+        /// Returns the direct children of this node, which are max. 2.
+        /// </summary>
+        /// <returns></returns>
+        public IEnumerable<RectNode> GetChildren()
+        {
+            List<RectNode> children = new List<RectNode>(2);
+            if (childA != null) children.Add(childA);
+            if (childB != null) children.Add(childB);
+
+            return children;
         }
     }
 }

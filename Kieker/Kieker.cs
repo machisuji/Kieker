@@ -16,7 +16,7 @@ namespace Kieker
 {
     public partial class ThumbView : Form
     {
-        private List<Window> windows;
+        private List<Window> windows = new List<Window>();
         private List<Thumb> thumbs = new List<Thumb>();
         private RectNode thumbRects;
         private bool debug = false;
@@ -28,17 +28,21 @@ namespace Kieker
         private readonly Object animationLock = new Object();
         private bool pauseAnimation = false;
         private delegate void VoidDelegate();
+        private delegate void ArgRectangle(Rectangle rect);
         private IntPtr windowHandle;
+        private RectPainter rectPainter;
 
         public ThumbView()
         {
             InitializeComponent();
 
+            this.rectPainter = new RectPainter(this);
             this.KeyPreview = true;
             this.KeyDown += new KeyEventHandler(this.Kieker_KeyDown);
             this.MouseClick += new MouseEventHandler(Kieker_MouseClick);
             this.Paint += new PaintEventHandler(Kieker_Paint);
-            this.TopMost = true;
+
+            rectPainter.Enabled = false;
         }
 
         private void Kieker_Load(object sender, EventArgs e)
@@ -80,6 +84,7 @@ namespace Kieker
                     }
                 }
             }
+            rectPainter.Paint(sender, e);
         }
 
         private void Kieker_MouseClick(object sender, MouseEventArgs e)
@@ -102,6 +107,10 @@ namespace Kieker
             if (e.Control && e.KeyCode == Keys.Q)
             {
                 Exit();
+            }
+            else if (e.Control && e.KeyCode == Keys.A)
+            {
+                Action();
             }
             else if (e.Control && e.KeyCode == Keys.C)
             {
@@ -127,6 +136,59 @@ namespace Kieker
                     }
                 }
             }
+            else if (e.Control && e.KeyCode == Keys.R)
+            {
+                rectPainter.Enabled = !rectPainter.Enabled;
+                if (rectPainter.Enabled)
+                {
+                    GetSomeRects();
+                    rectPainter.AnimateRects();
+                }
+                else
+                {
+                    rectPainter.HideRects();
+                }
+            }
+            else if (e.Control && e.KeyCode == Keys.H)
+            {
+                Hide();
+            }
+        }
+
+        protected void AssignThumbnails(IEnumerable<Window> windows)
+        {
+            
+        }
+
+        private void GetSomeRects()
+        {
+            List<Rectangle> someRects = new List<Rectangle>();
+            if (windows.Count == 0) GetWindows();
+            List<Rectangle> rects = windows.Select(w => w.Rect).OrderBy(r => r.Area()).Reverse().ToList();
+            double factor = 1d;
+            while (someRects.Count < rects.Count)
+            {
+                RectNode tree = new RectNode(Area);
+                someRects.Clear();
+                if (factor <= 0.1)
+                {
+                    Console.WriteLine("That's impossible!");
+                    break;
+                }
+                bool ok = true;
+                foreach (Rectangle rect in rects)
+                {
+                    Rectangle scaledRect = rect.GetScaled(factor);
+                    ok &= tree.Insert(scaledRect);
+                    if (!ok) break;
+                }
+                if (ok)
+                    someRects.AddRange(/*tree.GetStructure()*/tree.CollectRects());
+                factor -= 0.1;
+            }
+            rectPainter.Rects.Clear();
+            rectPainter.Rects.AddRange(someRects);
+            Console.WriteLine("Factor: " + factor);
         }
 
         private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -156,7 +218,7 @@ namespace Kieker
                 HideWindows();
                 action = false;
             };
-            Fork(theAction);
+            theAction.Fork();
         }
 
         void Unaction(Window target)
@@ -174,7 +236,7 @@ namespace Kieker
                     " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);*/
                 unaction = false;
             };
-            Fork(theAction);
+            theAction.Fork();
         }
 
         private void HideWindows()
@@ -213,9 +275,12 @@ namespace Kieker
                 {
                     StringBuilder sb = new StringBuilder(200);
                     User32.GetWindowText(hwnd, sb, sb.Capacity);
+                    Rect source = new Rect();
                     Window window = new Window();
                     window.Handle = hwnd;
                     window.Title = sb.ToString();
+                    User32.GetWindowRect(window.Handle, out source);
+                    window.Rect = source.ToRectangle();
                     if (!SkipWindow(window))
                         windows.Add(window);
                 }
@@ -363,6 +428,11 @@ namespace Kieker
             ClearThumbnails();
             List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top,
                 Area.Right, Area.Bottom), windows.Count);
+
+            GetSomeRects();
+            destinations.Clear();
+            destinations.AddRange(rectPainter.Rects.Select(x => x.ToRect()));
+
             List<Rect>.Enumerator dest = destinations.GetEnumerator();
             Window previousForegroundWindow = null;
             foreach (Window window in windows)
@@ -371,15 +441,12 @@ namespace Kieker
                     previousForegroundWindow = window;
                 if (dest.MoveNext())
                 {
-                    Rect source = new Rect();
                     IntPtr thumb = new IntPtr();
                     int i = DwmApi.DwmRegisterThumbnail(windowHandle, window.Handle, out thumb);
                     if (i == 0)
                     {
                         Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
-                        User32.GetWindowRect(window.Handle, out source);
                         window.Thumb = t;
-                        window.Rect = source.ToRectangle();
                         thumbs.Add(t);
                     }
                 }
@@ -622,11 +689,6 @@ namespace Kieker
             {
                 User32.ShowWindow(window.Handle, cmd);
             }
-        }
-
-        private void Fork(Action action)
-        {
-            new Thread(new ThreadStart(action)).Start();
         }
     }
 }
