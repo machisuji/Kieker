@@ -37,7 +37,7 @@ namespace Kieker
     {
         public string Title;
         public IntPtr Handle;
-        public Thumb Thumb;
+        public Thumb Thumb = new Thumb(IntPtr.Zero, Rectangle.Empty);
 
         /// <summary>
         /// The original rect of this window on the screen.
@@ -97,6 +97,11 @@ namespace Kieker
 
         public bool Insert(Rectangle rect)
         {
+            return InsertAndUpdate(ref rect);
+        }
+
+        public bool InsertAndUpdate(ref Rectangle rect)
+        {
             Normalize(ref rect);
             if (IsLeaf()) // insert rect here
             {
@@ -121,21 +126,23 @@ namespace Kieker
                     childA.childA = new RectNode(new Rectangle(this.rect.X, this.rect.Y,
                         rect.Width, rect.Height));
                     childA.childA.taken = true;
+                    rect.X = this.rect.X;
+                    rect.Y = this.rect.Y;
                     if (childA.childA.rect.Width == childA.rect.Width)
                     {
                         childA.childB = new RectNode(new Rectangle(
-                            this.rect.X,
-                            this.rect.Y + childA.childA.rect.Height,
-                            this.rect.Width,
-                            this.rect.Height - childA.childA.rect.Height));
+                            childA.rect.X,
+                            childA.rect.Y + childA.childA.rect.Height,
+                            childA.rect.Width,
+                            childA.rect.Height - childA.childA.rect.Height));
                     }
                     else if (childA.childA.rect.Height == childA.rect.Height)
                     {
                         childA.childB = new RectNode(new Rectangle(
-                            this.rect.X + childA.childA.rect.Width,
-                            this.rect.Y,
-                            this.rect.Width - childA.childA.rect.Width,
-                            this.rect.Height));
+                            childA.rect.X + childA.childA.rect.Width,
+                            childA.rect.Y,
+                            childA.rect.Width - childA.childA.rect.Width,
+                            childA.rect.Height));
                     }
                     return true;
                 }
@@ -146,7 +153,8 @@ namespace Kieker
             }
             else
             {
-                return (childA != null && childA.Insert(rect)) || (childB != null && childB.Insert(rect));
+                return (childA != null && childA.InsertAndUpdate(ref rect)) || 
+                    (childB != null && childB.InsertAndUpdate(ref rect));
             }
         }
 
@@ -182,6 +190,7 @@ namespace Kieker
             LinkedList<RectNode> nodes = new LinkedList<RectNode>();
             if (childA != null) nodes.AddLast(childA);
             if (childB != null) nodes.AddLast(childB);
+            rects.AddLast(this.rect);
             while (nodes.Count > 0)
             {
                 foreach (RectNode node in nodes)
