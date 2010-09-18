@@ -61,6 +61,13 @@ namespace Kieker
             return new Rectangle(rect.X, rect.Y, width, height);
         }
 
+        public static Rectangle GetExpanded(this Rectangle rect, int dw, int dh)
+        {
+            return new Rectangle(
+                rect.X - (dw / 2), rect.Y - (dh / 2),
+                rect.Width + dw, rect.Height + dh);
+        }
+
         public static int Area(this Rectangle rect)
         {
             return rect.Width * rect.Height;

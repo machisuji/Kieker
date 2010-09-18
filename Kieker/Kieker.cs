@@ -16,8 +16,9 @@ namespace Kieker
 {
     public partial class ThumbView : Form
     {
+        private Settings settings;
+
         private List<Window> windows = new List<Window>();
-        //private List<Thumb> thumbs = new List<Thumb>();
         private RectNode thumbRects;
         private bool debug = false;
         private Shell32.ShellClass shell = new Shell32.ShellClass();
@@ -34,6 +35,7 @@ namespace Kieker
 
         public ThumbView()
         {
+            this.settings = new Settings();
             InitializeComponent();
 
             this.rectPainter = new RectPainter(this);
@@ -163,7 +165,7 @@ namespace Kieker
             while (!allFit)
             {
                 allFit = true;
-                RectNode tree = new RectNode(Area);
+                RectNode tree = new RectNode(Area.GetExpanded(-30, -30));
                 if (factor <= 0.1)
                 {
                     // @TODO fall back to grid arrangement
@@ -173,7 +175,7 @@ namespace Kieker
                 {
                     Rectangle scaledRect = window.Rect.GetScaled(factor);
                     allFit &= tree.InsertAndUpdate(ref scaledRect);
-                    if (allFit) window.Thumb.Destination = scaledRect;
+                    if (allFit) window.Thumb.Destination = scaledRect.GetExpanded(-10, -10);
                     else break;
                 }
                 factor -= 0.1;
@@ -187,15 +189,12 @@ namespace Kieker
                     // Thumbnail konnte nicht registriert werden, bisher ignorieren wir das einfach ...
                 }
             }
-            /*
-             * IntPtr thumb = new IntPtr();
-                    int i = DwmApi.DwmRegisterThumbnail(windowHandle, window.Handle, out thumb);
-                    if (i == 0)
-                    {
-                        Thumb t = new Thumb(thumb, dest.Current.ToRectangle());
-                        window.Thumb = t;
-                        thumbs.Add(t);
-                    }*/
+        }
+
+
+        protected void Scatter(IEnumerable<Rectangle> rects, Rectangle bounds)
+        {
+            
         }
 
         private void GetSomeRects()
@@ -241,7 +240,7 @@ namespace Kieker
 
         private void showToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            Action();
+            settings.Show();
         }
 
         void Action()
@@ -270,8 +269,6 @@ namespace Kieker
                 System.Threading.Thread.Sleep(100);
                 Invoke(new VoidDelegate(Hide));
                 ClearThumbnails();
-                /*notifyIcon.ShowBalloonTip(2000, "Debug", "Activating " + target.Title +
-                    " @" + target.Thumb.Rect.ToString(), ToolTipIcon.None);*/
                 unaction = false;
             };
             theAction.Fork();
@@ -326,8 +323,6 @@ namespace Kieker
             };
             User32.EnumWindows(callback, 0);
             windows.Reverse();
-            //SortByZOrder(windows);
-            //windows.Reverse();
         }
 
         private bool AcceptWindow(IntPtr hwnd)
@@ -346,11 +341,6 @@ namespace Kieker
 
         private void ClearThumbnails()
         {
-            /*foreach (Thumb thumb in thumbs)
-            {
-                if (thumb.Value != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Value);
-            }
-            thumbs.Clear();*/
             foreach (Thumb thumb in windows.Select(w => w.Thumb))
             {
                 if (thumb.Value != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Value);
@@ -360,6 +350,8 @@ namespace Kieker
         private void Exit()
         {
             ClearThumbnails();
+            settings.Dispose();
+            settings = null;
             Application.Exit();
         }
 
@@ -388,8 +380,6 @@ namespace Kieker
                 hwnd = User32.GetWindow(hwnd, Constants.GW_HWNDNEXT);
             }
             sorted.AddRange(unsorted); // in case we missed something
-            //windows.Clear();
-            //windows.AddRange(sorted);
             Console.WriteLine("Windows ordered by z-order beginning with the topmost one: ");
             foreach (Window window in sorted)
             {
@@ -493,15 +483,6 @@ namespace Kieker
             MoveThumbsBack(windows);
         }
 
-        /*private void UpdateThumbs()
-        {
-            RecalculateThumbDestinations(new Rect(Area.Left, Area.Top, Area.Right, Area.Bottom));
-            foreach (Thumb thumb in thumbs)
-            {
-                UpdateThumb(thumb);
-            }
-        }*/
-
         private List<Rect> CalculateThumbDestinations(Rect dest, int thumbCount)
         {
             List<Rect> rects = new List<Rect>(thumbCount);
@@ -526,18 +507,6 @@ namespace Kieker
             }
             return rects;
         }
-
-        /*private void RecalculateThumbDestinations(Rect dest)
-        {
-            List<Rect> newDestinations = CalculateThumbDestinations(dest, thumbs.Count);
-            List<Rect>.Enumerator de = newDestinations.GetEnumerator();
-            de.MoveNext();
-            foreach (Thumb thumb in thumbs)
-            {
-                thumb.Destination = de.Current.ToRectangle();
-                de.MoveNext();
-            }
-        }*/
 
         private int GetSubsegmentWidth(int segment, int subsegments, int margin)
         {
