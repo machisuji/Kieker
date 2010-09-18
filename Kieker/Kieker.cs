@@ -327,11 +327,14 @@ namespace Kieker
 
         private bool AcceptWindow(IntPtr hwnd)
         {
-            ulong require = Constants.WS_BORDER | Constants.WS_VISIBLE;
-            ulong refuse = Constants.WS_ICONIC;
-            return //!User32.IsIconic(hwnd) &&
-                (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & require) == require &&
-                (User32.GetWindowLongA(hwnd, Constants.GWL_STYLE) & refuse) != refuse;
+            ulong required = Constants.WS_BORDER;
+            List<ulong> disjunction = new List<ulong>();
+            disjunction.Add(Constants.WS_VISIBLE);
+            if (settings.IncludeMinimizedWindows)
+                disjunction.Add(Constants.WS_ICONIC);
+            ulong wl = User32.GetWindowLongA(hwnd, Constants.GWL_STYLE);
+
+            return (wl & required) == required && disjunction.Any((op) => (wl & op) == op);
         }
 
         private bool SkipWindow(Window window)
