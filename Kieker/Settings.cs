@@ -11,7 +11,7 @@ namespace Kieker
 {
     public partial class Settings : Form
     {
-        private bool includeMinimizedWindows = false;
+        private bool includeMinimizedWindows = true;
 
         public bool IncludeMinimizedWindows
         {
@@ -30,6 +30,11 @@ namespace Kieker
             this.FormClosing += new FormClosingEventHandler(Settings_FormClosing);
         }
 
+        private void Settings_Load(object sender, EventArgs e)
+        {
+            cbIncludeMinimizedWindows.Checked = includeMinimizedWindows;
+        }
+
         void Settings_FormClosing(object sender, FormClosingEventArgs e)
         {
             Hide();
@@ -44,11 +49,6 @@ namespace Kieker
         private void cbIncludeMinimizedWindows_CheckedChanged(object sender, EventArgs e)
         {
             includeMinimizedWindows = cbIncludeMinimizedWindows.Checked;
-        }
-
-        private void Settings_Load(object sender, EventArgs e)
-        {
-
         }
     }
 }

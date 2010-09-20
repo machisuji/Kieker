@@ -46,6 +46,23 @@ namespace Kieker
             }
         }
 
+        [StructLayout(LayoutKind.Sequential)]
+        public struct MARGINS
+        {
+            public int Left;
+            public int Right;
+            public int Top;
+            public int Bottom;
+
+            public MARGINS(int Left, int Top, int Right, int Bottom)
+            {
+                this.Left = Left;
+                this.Top = Top;
+                this.Right = Right;
+                this.Bottom = Bottom;
+            }
+        }
+
         public class Constants
         {
             public const int SW_HIDE = 0;
@@ -138,7 +155,7 @@ namespace Kieker
             public static extern void GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
 
             [DllImport("user32.dll")]
-            public static extern ulong GetWindowLongA(IntPtr hWnd, int nIndex);
+            public static extern ulong GetWindowLong(IntPtr hWnd, int nIndex);
         }
 
         public class DwmApi
@@ -155,6 +172,12 @@ namespace Kieker
             [DllImport("dwmapi.dll")]
             public static extern int DwmUpdateThumbnailProperties(IntPtr hThumb, 
                 ref DWM_THUMBNAIL_PROPERTIES props);
+
+            [DllImport("dwmapi.dll")]
+            public static extern int DwmIsCompositionEnabled(out bool enabled);
+
+            [DllImport("dwmapi.dll")]
+            public static extern int DwmExtendFrameIntoClientArea(IntPtr hwnd, ref MARGINS insets);
         }
 
         public class Kernel32

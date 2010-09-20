@@ -35,7 +35,6 @@ namespace Kieker
 
         public ThumbView()
         {
-            this.settings = new Settings();
             InitializeComponent();
 
             this.rectPainter = new RectPainter(this);
@@ -49,9 +48,14 @@ namespace Kieker
 
         private void Kieker_Load(object sender, EventArgs e)
         {
-            windowHandle = this.Handle;
+            this.settings = new Settings();
+            this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
+            if (!MakeCompletelyGlassy(windowHandle))
+            {
+                Console.WriteLine("DIDNT WORK !!!");
+            }
             Action();
         }
 
@@ -280,6 +284,7 @@ namespace Kieker
             {
                 Rect bounds = new Rect();
                 User32.GetWindowRect(window.Handle, out bounds);
+                Console.WriteLine(bounds.ToString() + " <- " + window.Title);
                 window.LastPosition = new Nullable<Point>(new Point(bounds.Left, bounds.Top));
                 User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16000, -16000, -1, -1,
                     Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | Constants.SWP_NOREDRAW |
@@ -317,24 +322,30 @@ namespace Kieker
                     User32.GetWindowRect(window.Handle, out source);
                     window.Rect = source.ToRectangle();
                     if (!SkipWindow(window))
+                    {
                         windows.Add(window);
+                        Console.WriteLine("Added Window '" + window.Title + "'");
+                    }
                 }
                 return true;
             };
+            Console.WriteLine();
             User32.EnumWindows(callback, 0);
             windows.Reverse();
         }
 
         private bool AcceptWindow(IntPtr hwnd)
         {
+            bool ok = true;
+            ulong wl = User32.GetWindowLong(hwnd, Constants.GWL_STYLE);
             ulong required = Constants.WS_BORDER;
-            List<ulong> disjunction = new List<ulong>();
-            disjunction.Add(Constants.WS_VISIBLE);
-            if (settings.IncludeMinimizedWindows)
-                disjunction.Add(Constants.WS_ICONIC);
-            ulong wl = User32.GetWindowLongA(hwnd, Constants.GWL_STYLE);
+            List<ulong> accept = new List<ulong>();
 
-            return (wl & required) == required && disjunction.Any((op) => (wl & op) == op);
+            accept.Add(Constants.WS_VISIBLE);
+            ok &= settings.IncludeMinimizedWindows || !User32.IsIconic(hwnd);
+
+            return ok && (wl & required) == required && 
+                (accept.Count == 0 || accept.Any((op) => (wl & op) == op));
         }
 
         private bool SkipWindow(Window window)
@@ -418,6 +429,25 @@ namespace Kieker
         {
             return point.X >= rect.Left && point.X <= rect.Right &&
                 point.Y >= rect.Top && point.Y <= rect.Bottom;
+        }
+
+        protected bool MakeCompletelyGlassy(IntPtr hwnd)
+        {
+            bool enabled = false;
+            DwmApi.DwmIsCompositionEnabled(out enabled);
+            if (enabled)
+            {
+                MARGINS margins = new MARGINS(-1, -1, -1, -1);
+                int hr = DwmApi.DwmExtendFrameIntoClientArea(hwnd, ref margins);
+                return hr == 0;
+            }
+            return false;
+        }
+
+
+        protected void MakeGlassy()
+        {
+
         }
 
         private void ShowThumbnails()
