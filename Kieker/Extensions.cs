@@ -38,14 +38,14 @@ namespace Kieker
             }
         }
 
-        public static Rectangle ToRectangle(this Rect rect)
+        public static Rectangle ToRectangle(this RECT rect)
         {
             return new Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
         }
 
-        public static Rect ToRect(this Rectangle rect)
+        public static RECT ToRect(this Rectangle rect)
         {
-            return new Rect(rect.Left, rect.Top, rect.Right, rect.Bottom);
+            return new RECT(rect.Left, rect.Top, rect.Right, rect.Bottom);
         }
 
         public static Rectangle GetNormalized(this Rectangle rect)

@@ -1,6 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System;
 using System.Text;
+using System.Drawing;
 
 namespace Kieker
 {
@@ -17,17 +18,35 @@ namespace Kieker
         public struct DWM_THUMBNAIL_PROPERTIES
         {
             public int dwFlags;
-            public Rect rcDestination;
-            public Rect rcSource;
+            public RECT rcDestination;
+            public RECT rcSource;
             public byte opacity;
             public bool fVisible;
             public bool fSourceClientAreaOnly;
         }
 
         [StructLayout(LayoutKind.Sequential)]
-        public struct Rect
+        public struct POINT
         {
-            internal Rect(int left, int top, int right, int bottom)
+            public long x;
+            public long y;
+
+            public POINT(long x, long y)
+            {
+                this.x = x;
+                this.y = y;
+            }
+
+            public Point ToPoint()
+            {
+                return new Point((int)x, (int)y);
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            internal RECT(int left, int top, int right, int bottom)
             {
                 Left = left;
                 Top = top;
@@ -40,9 +59,32 @@ namespace Kieker
             public int Right;
             public int Bottom;
 
+            public POINT GetPosition()
+            {
+                return new POINT(Left, Top);
+            }
+
             public override string ToString()
             {
                 return "[" + Left + ", " + Top + ", " + Right + ", " + Bottom + "]";
+            }
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct WINDOWPLACEMENT
+        {
+            public uint length;
+            public uint flags;
+            public uint showCmd;
+            public POINT minPosition;
+            public POINT maxPosition;
+            public RECT normalPosition;
+
+            public static WINDOWPLACEMENT New()
+            {
+                WINDOWPLACEMENT ret = new WINDOWPLACEMENT();
+                ret.length = (uint)System.Runtime.InteropServices.Marshal.SizeOf(ret);
+                return ret;
             }
         }
 
@@ -113,6 +155,9 @@ namespace Kieker
         public class User32
         {
             [DllImport("user32.dll")]
+            public static extern bool GetWindowPlacement(IntPtr hwnd, ref WINDOWPLACEMENT wndpl);
+
+            [DllImport("user32.dll")]
             public static extern IntPtr GetTopWindow(IntPtr hwnd);
 
             [DllImport("user32.dll")]
@@ -141,7 +186,7 @@ namespace Kieker
             public static extern int GetWindowText(HandleRef hWnd, StringBuilder lpString, int nMaxCount);
 
             [DllImport("user32.dll")]
-            public static extern bool GetWindowRect(IntPtr hWnd, out Rect rect);
+            public static extern bool GetWindowRect(IntPtr hWnd, out RECT rect);
 
             [DllImport("user32.dll", CharSet = CharSet.Auto)]
             public static extern int GetWindowTextLength(HandleRef hWnd);

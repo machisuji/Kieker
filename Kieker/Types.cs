@@ -44,7 +44,8 @@ namespace Kieker
         /// The original rect of this window on the screen.
         /// </summary>
         public Rectangle Rect;
-        public Nullable<Point> LastPosition;
+        public Nullable<Point> LastPosition = new Nullable<Point>();
+        public Nullable<WINDOWPLACEMENT> Placement = new Nullable<WINDOWPLACEMENT>();
 
         public override string ToString()
         {
