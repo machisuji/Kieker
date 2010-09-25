@@ -52,10 +52,6 @@ namespace Kieker
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
-            if (!MakeCompletelyGlassy(windowHandle))
-            {
-                Console.WriteLine("DIDNT WORK !!!");
-            }
             Action();
         }
 
