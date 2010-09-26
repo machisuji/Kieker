@@ -2,11 +2,72 @@
 using System.Drawing;
 using System;
 using System.Threading;
+using System.Collections.Generic;
 
 namespace Kieker
 {
     public static class ExtensionsClass
     {
+        public static void MoveToEnd<T>(this ICollection<T> items, T item)
+        {
+            items.Remove(item);
+            items.Add(item);
+        }
+
+        /// <summary>
+        /// Tries to find an item fulfilling the specified predicate.
+        /// If there is no such item, one is created (using the default constructor)
+        /// and added to the collection.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="predicate"></param>
+        /// <returns>The found or created item.</returns>
+        public static T FindOrCreate<T>(this ICollection<T> items, Predicate<T> predicate)
+        {
+            T item = default(T);
+            foreach (T ci in items)
+            {
+                if (predicate.Invoke(ci))
+                    item = ci;
+            }
+            if (item == null)
+            {
+                item = Activator.CreateInstance<T>();
+                items.Add(item);
+            }
+            return item;
+        }
+
+        /// <summary>
+        /// Tries to find an item fulfilling the specified predicate.
+        /// If there is no such item, one is created (using the given function)
+        /// and added to the collection.
+        /// </summary>
+        /// <typeparam name="T"></typeparam>
+        /// <param name="items"></param>
+        /// <param name="predicate"></param>
+        /// <param name="creation"></param>
+        /// <returns>The found or created item.</returns>
+        public static T FindOrCreate<T>(this ICollection<T> items, Predicate<T> predicate, Func<T> creation)
+        {
+            return FindOrCreateIf<T>(items, predicate, creation, t => true);
+        }
+
+        public static T FindOrCreateIf<T>(this ICollection<T> items, Predicate<T> find, Func<T> create,
+            Predicate<T> providedThat)
+        {
+            foreach (T item in items)
+            {
+                if (find.Invoke(item))
+                    return item;
+            }
+            T newItem = create.Invoke();
+            if (providedThat.Invoke(newItem))
+                items.Add(newItem);
+            return newItem;
+        }
+
         public static void Fork(this Action action)
         {
             Thread thread = new Thread(new ThreadStart(action));

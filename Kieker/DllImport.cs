@@ -152,10 +152,40 @@ namespace Kieker
             public const uint GW_HWNDPREV = 3;
         }
 
+        public class Gdi32
+        {
+            [DllImport("gdi32.dll")]
+            public static extern IntPtr SelectObject(IntPtr hdc, IntPtr hGdiObj);
+
+            [DllImport("gdi32.dll")]
+            public static extern bool DeleteObject(IntPtr hGdiObj);
+
+            [DllImport("gdi32.dll")]
+            public static extern IntPtr CreateCompatibleBitmap(IntPtr hdc, int width, int height);
+
+            [DllImport("gdi32.dll")]
+            public static extern IntPtr CreateCompatibleDC(IntPtr hdc);
+
+            [DllImport("gdi32.dll")]
+            public static extern bool DeleteDC(IntPtr hdc);
+        }
+
         public class User32
         {
             [DllImport("user32.dll")]
-            public static extern bool GetWindowPlacement(IntPtr hwnd, ref WINDOWPLACEMENT wndpl);
+            public static extern int GetWindowThreadProcessId(IntPtr hwnd, out int processId);
+
+            [DllImport("user32.dll")]
+            public static extern bool PrintWindow(IntPtr hwnd, IntPtr hdcBlt, uint nFlags);
+
+            [DllImport("user32.dll")]
+            public static extern int ReleaseDC(IntPtr hwnd, IntPtr hdc);
+
+            [DllImport("user32.dll")]
+            public static extern IntPtr GetDC(IntPtr hwnd);
+
+            [DllImport("user32.dll")]
+            public static extern bool GetWindowPlacement(IntPtr hwnd, out WINDOWPLACEMENT wndpl);
 
             [DllImport("user32.dll")]
             public static extern IntPtr GetTopWindow(IntPtr hwnd);
