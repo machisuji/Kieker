@@ -74,12 +74,12 @@
             this.BackColor = System.Drawing.Color.Cyan;
             this.ClientSize = new System.Drawing.Size(529, 375);
             this.ControlBox = false;
+            this.DoubleBuffered = true;
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.None;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ThumbView";
             this.ShowInTaskbar = false;
             this.Text = "Kieker";
-            this.TopMost = true;
             this.TransparencyKey = System.Drawing.Color.Cyan;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Kieker_Load);

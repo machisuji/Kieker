@@ -33,6 +33,8 @@ namespace Kieker
         private IntPtr windowHandle;
         private RectPainter rectPainter;
 
+        private bool dwmEnabled = false;
+
         public ThumbView()
         {
             InitializeComponent();
@@ -44,6 +46,7 @@ namespace Kieker
             this.Paint += new PaintEventHandler(Kieker_Paint);
 
             rectPainter.Enabled = false;
+            DwmApi.DwmIsCompositionEnabled(out dwmEnabled);
         }
 
         private void Kieker_Load(object sender, EventArgs e)
@@ -52,7 +55,7 @@ namespace Kieker
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
-            Action();
+            this.Hide();
         }
 
         void HookManager_KeyUp(object sender, KeyEventArgs e)
@@ -87,6 +90,29 @@ namespace Kieker
                 }
             }
             rectPainter.Paint(sender, e);
+            if (!dwmEnabled)
+            {
+                Graphics g = e.Graphics;
+                g.DrawRectangle(new Pen(Color.Red), Area.GetExpanded(-20, -20));
+                foreach (Window window in windows)
+                {
+                    Thumb thumb = window.Thumb;
+                    if (thumb.Value.Equals(IntPtr.Zero) && window.Rect.HasValue)
+                    {
+                        if (thumb.Rect == null)
+                        {
+                            g.FillEllipse(new SolidBrush(Color.Blue), new Rectangle(100, 100, 320, 240));
+                        }
+                        else
+                        {
+                            if (window.StaticThumb != null)
+                                g.DrawImage(window.StaticThumb, thumb.Rect);
+                            else
+                                g.FillRectangle(new SolidBrush(Color.Red), thumb.Rect);
+                        }
+                    }
+                }
+            }
         }
 
         private void Kieker_MouseClick(object sender, MouseEventArgs e)
@@ -143,7 +169,6 @@ namespace Kieker
                 rectPainter.Enabled = !rectPainter.Enabled;
                 if (rectPainter.Enabled)
                 {
-                    GetSomeRects();
                     rectPainter.AnimateRects();
                 }
                 else
@@ -155,11 +180,20 @@ namespace Kieker
             {
                 Hide();
             }
+            else if (e.Control && e.KeyCode == Keys.U)
+            {
+                UnhideWindows();
+            }
+            else if (e.Control && e.KeyCode == Keys.I)
+            {
+                Invalidate();
+            }
         }
 
         protected void AssignThumbnails(IEnumerable<Window> windows)
         {
-            IEnumerable<Window> sortedWindows = windows.OrderBy(w => w.Rect.Area()).Reverse();
+            IEnumerable<Window> sortedWindows = windows.OrderBy(w => 
+                w.GetRect(true).Value.Area()).Reverse();
             double factor = 1d;
             bool allFit = false;
             while (!allFit)
@@ -173,7 +207,7 @@ namespace Kieker
                 }
                 foreach (Window window in sortedWindows)
                 {
-                    Rectangle scaledRect = window.Rect.GetScaled(factor);
+                    Rectangle scaledRect = window.GetRect(true).Value.GetScaled(factor);
                     allFit &= tree.InsertAndUpdate(ref scaledRect);
                     if (allFit) window.Thumb.Destination = scaledRect.GetExpanded(-10, -10);
                     else break;
@@ -183,49 +217,20 @@ namespace Kieker
             Console.WriteLine("Factor: " + (factor + 0.1));
             foreach (Window window in windows)
             {
-                int i = DwmApi.DwmRegisterThumbnail(this.windowHandle, window.Handle, out window.Thumb.Value);
-                if (i != 0)
+                if (dwmEnabled)
                 {
-                    // Thumbnail konnte nicht registriert werden, bisher ignorieren wir das einfach ...
+                    int i = DwmApi.DwmRegisterThumbnail(this.windowHandle, window.Handle,
+                        out window.Thumb.Value);
+                    if (i != 0)
+                    {
+                        Console.WriteLine("Could not register Thumbnail for '" + window.Title + "'");
+                    }
+                }
+                else
+                {
+                    window.GetStaticThumb(true);
                 }
             }
-        }
-
-
-        protected void Scatter(IEnumerable<Rectangle> rects, Rectangle bounds)
-        {
-            
-        }
-
-        private void GetSomeRects()
-        {
-            List<Rectangle> someRects = new List<Rectangle>();
-            if (windows.Count == 0) GetWindows();
-            List<Rectangle> rects = windows.Select(w => w.Rect).OrderBy(r => r.Area()).Reverse().ToList();
-            double factor = 1d;
-            while (someRects.Count < rects.Count)
-            {
-                RectNode tree = new RectNode(Area);
-                someRects.Clear();
-                if (factor <= 0.1)
-                {
-                    Console.WriteLine("That's impossible!");
-                    break;
-                }
-                bool ok = true;
-                foreach (Rectangle rect in rects)
-                {
-                    Rectangle scaledRect = rect.GetScaled(factor);
-                    ok &= tree.Insert(scaledRect);
-                    if (!ok) break;
-                }
-                if (ok)
-                    someRects.AddRange(tree.GetStructure());
-                factor -= 0.1;
-            }
-            rectPainter.Rects.Clear();
-            rectPainter.Rects.AddRange(someRects);
-            Console.WriteLine("Factor: " + factor);
         }
 
         private void notifyIcon_MouseDoubleClick(object sender, MouseEventArgs e)
@@ -251,8 +256,9 @@ namespace Kieker
                 IntPtr hforegroundWindow = User32.GetForegroundWindow();
                 ClearThumbnails();
                 Invoke(new VoidDelegate(Show));
+                //CoverMinimizedWindows(windows.FindAll(w => User32.IsIconic(w.Handle)));
                 ShowThumbnailsAnimated(hforegroundWindow);
-                HideWindows();
+                HideWindows(windows);
                 action = false;
             };
             theAction.Fork();
@@ -262,11 +268,13 @@ namespace Kieker
         {
             Action theAction = () => {
                 unaction = true;
-                SetForegroundThumb(target);
+                if (dwmEnabled)
+                    SetForegroundThumb(target);
+                else
+                    windows.MoveToEnd(target);
                 DoMoveThumbsBack();
                 UnhideWindows();
                 User32.SetForegroundWindow(target.Handle);
-                System.Threading.Thread.Sleep(100);
                 Invoke(new VoidDelegate(Hide));
                 ClearThumbnails();
                 unaction = false;
@@ -274,16 +282,26 @@ namespace Kieker
             theAction.Fork();
         }
 
-        private void HideWindows()
+        private void CoverMinimizedWindows(IEnumerable<Window> minimizedWindows)
+        {
+            foreach (Window window in minimizedWindows)
+            {
+                window.GetPlacement(true);
+                User32.ShowWindow(window.Handle, Constants.SW_SHOWNOACTIVATE);
+                //User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16019, -16087, -1, -1,
+                //        Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | Constants.SWP_NOACTIVATE);
+            }
+        }
+
+        private void HideWindows(IEnumerable<Window> windows)
         {
             foreach (Window window in windows)
             {
-                Rect bounds = new Rect();
+                RECT bounds = new RECT();
                 User32.GetWindowRect(window.Handle, out bounds);
-                Console.WriteLine(bounds.ToString() + " <- " + window.Title);
                 window.LastPosition = new Nullable<Point>(new Point(bounds.Left, bounds.Top));
-                User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16000, -16000, -1, -1,
-                    Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | Constants.SWP_NOREDRAW |
+                User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16019, -16087, -1, -1,
+                    Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | /*Constants.SWP_NOREDRAW |*/
                     Constants.SWP_NOSENDCHANGING | Constants.SWP_NOACTIVATE);
             }
         }
@@ -292,35 +310,39 @@ namespace Kieker
         {
             foreach (Window window in windows)
             {
-                if (window.LastPosition.HasValue)
+                if (window.Placement.HasValue) // minimized window
+                {
+                    Rectangle bounds = window.Placement.Value.normalPosition.ToRectangle();
+                    User32.ShowWindow(window.Handle, Constants.SW_MINIMIZE);
+                    User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, bounds.X, bounds.Y,
+                        -1, -1, Constants.SWP_NOSIZE | Constants.SWP_NOZORDER | Constants.SWP_NOREDRAW |
+                        Constants.SWP_NOREPOSITION | Constants.SWP_NOSENDCHANGING | Constants.SWP_NOMOVE);
+                    User32.ShowWindow(window.Handle, Constants.SW_MINIMIZE);
+                }
+                else if (window.LastPosition.HasValue) // normal window
                 {
                     Point pos = window.LastPosition.Value;
                     User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, pos.X, pos.Y, 
-                        -1, -1, Constants.SWP_NOSIZE);
-                    window.LastPosition = new Nullable<Point>();
+                        -1, -1, Constants.SWP_NOSIZE | Constants.SWP_NOACTIVATE | Constants.SWP_NOZORDER |
+                        Constants.SWP_NOSENDCHANGING | Constants.SWP_NOREDRAW);
                 }
+                window.Placement = new Nullable<WINDOWPLACEMENT>();
+                window.LastPosition = new Nullable<Point>();
             }
         }
 
         private void GetWindows()
         {
-            windows = new List<Window>();
+            windows.Clear();
             User32.EnumWindowsCallback callback = (hwnd, lParam) =>
             {
                 if (windowHandle != hwnd && AcceptWindow(hwnd))
                 {
-                    StringBuilder sb = new StringBuilder(200);
-                    User32.GetWindowText(hwnd, sb, sb.Capacity);
-                    Rect source = new Rect();
-                    Window window = new Window();
-                    window.Handle = hwnd;
-                    window.Title = sb.ToString();
-                    User32.GetWindowRect(window.Handle, out source);
-                    window.Rect = source.ToRectangle();
+                    Window window = new Window(hwnd);
                     if (!SkipWindow(window))
                     {
                         windows.Add(window);
-                        Console.WriteLine("Added Window '" + window.Title + "'");
+                        Console.WriteLine("Added '" + window.GetTitle(true) + "'");
                     }
                 }
                 return true;
@@ -346,7 +368,7 @@ namespace Kieker
 
         private bool SkipWindow(Window window)
         {
-            return window.Title.Equals("AMD:CCC-AEMCapturingWindow");
+            return window.GetTitle(true).Equals("AMD:CCC-AEMCapturingWindow");
         }
 
         private void ClearThumbnails()
@@ -421,7 +443,7 @@ namespace Kieker
             return stringBuilder.ToString();
         }
 
-        private bool contains(Rect rect, Point point)
+        private bool contains(RECT rect, Point point)
         {
             return point.X >= rect.Left && point.X <= rect.Right &&
                 point.Y >= rect.Top && point.Y <= rect.Bottom;
@@ -450,11 +472,11 @@ namespace Kieker
         {
             GetWindows();
             ClearThumbnails();
-            thumbRects = new RectNode(new Rect(Area.Left, Area.Top, 
+            thumbRects = new RectNode(new RECT(Area.Left, Area.Top, 
                 Area.Right, Area.Bottom).ToRectangle());
-            List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top, 
+            List<RECT> destinations = CalculateThumbDestinations(new RECT(Area.Left, Area.Top, 
                 Area.Right, Area.Bottom), windows.Count);
-            List<Rect>.Enumerator de = destinations.GetEnumerator();
+            List<RECT>.Enumerator de = destinations.GetEnumerator();
             de.MoveNext();
             foreach (Window w in windows)
             {
@@ -486,16 +508,11 @@ namespace Kieker
         {
             GetWindows();
             ClearThumbnails();
-            List<Rect> destinations = CalculateThumbDestinations(new Rect(Area.Left, Area.Top,
+            List<RECT> destinations = CalculateThumbDestinations(new RECT(Area.Left, Area.Top,
                 Area.Right, Area.Bottom), windows.Count);
-            Window previousForegroundWindow = null;
-            foreach (Window window in windows)
-            {
-                if (window.Handle.Equals(hforegroundWindow))
-                    previousForegroundWindow = window;
-            }
+            Window previousForegroundWindow = windows.Find(w => w.Handle.Equals(hforegroundWindow));
             AssignThumbnails(windows);
-            if (previousForegroundWindow != null)
+            if (previousForegroundWindow != null && dwmEnabled)
             {
                 SetForegroundThumb(previousForegroundWindow);
             }
@@ -512,9 +529,9 @@ namespace Kieker
             MoveThumbsBack(windows);
         }
 
-        private List<Rect> CalculateThumbDestinations(Rect dest, int thumbCount)
+        private List<RECT> CalculateThumbDestinations(RECT dest, int thumbCount)
         {
-            List<Rect> rects = new List<Rect>(thumbCount);
+            List<RECT> rects = new List<RECT>(thumbCount);
             int margin = 5; // pixels
             int destWidth = dest.Right - dest.Left;
             int destHeight = dest.Bottom - dest.Top;
@@ -530,7 +547,7 @@ namespace Kieker
                 {
                     int top = dest.Top + row * (itemHeight + margin);
                     int left = dest.Left + col * (itemWidth + margin);
-                    Rect rect = new Rect(left, top, left + itemWidth, top + itemHeight);
+                    RECT rect = new RECT(left, top, left + itemWidth, top + itemHeight);
                     rects.Add(rect);
                 }
             }
@@ -551,24 +568,16 @@ namespace Kieker
 
         private void MoveThumbs(List<Window> windows)
         {
-            MoveRects((from window in windows select window.Thumb).ToList(),
-                (from window in windows select window.Rect).ToList(),
-                (from window in windows select window.Thumb.Destination).ToList());
+            MoveThumbs(windows, true);
         }
 
         private void MoveThumbsBack(List<Window> windows)
         {
-            MoveRects((from window in windows select window.Thumb).ToList(),
-                (from window in windows select window.Thumb.Destination).ToList(),
-                (from window in windows select window.Rect).ToList());
+            MoveThumbs(windows, false);
         }
 
-        private void MoveRects(List<Thumb> thumbs, List<Rectangle> starts, List<Rectangle> ends)
+        private void MoveThumbs(List<Window> windows, bool forth)
         {
-            if (thumbs.Count != starts.Count && starts.Count != ends.Count)
-                throw new ArgumentException(
-                    "There must be as many start rects as end rects and thumbs of course.");
-            
             int steps = 25;
             for (int n = 0; n <= steps; ++n)
             {
@@ -581,28 +590,42 @@ namespace Kieker
                     }
                 }
                 double f = (1d * n / (1d * steps)).EaseInOut(3);
-                List<Thumb>.Enumerator thumb = thumbs.GetEnumerator();
-                List<Rectangle>.Enumerator start = starts.GetEnumerator();
-                List<Rectangle>.Enumerator end = ends.GetEnumerator();
-                while (thumb.MoveNext() && start.MoveNext() && end.MoveNext())
+                foreach (Window window in windows)
                 {
+                    Thumb thumb = window.Thumb;
+                    Rectangle start = forth ? window.GetRect(true).Value : thumb.Destination;
+                    Rectangle end = forth ? thumb.Destination : window.GetRect(true).Value;
                     if (n < steps)
                     {
-                        Rectangle intermediate = GetIntermediate(start.Current, end.Current, (float)f);
-                        UpdateThumb(thumb.Current.Value, intermediate.ToRect());
+                        Rectangle intermediate = GetIntermediate(start, end, (float)f);
+                        if (dwmEnabled)
+                            UpdateThumb(thumb.Value, intermediate.ToRect());
+                        else
+                        {
+                            thumb.Rect = intermediate; // we're gonna paint it ourselves
+                        }
                     }
                     else
                     {
-                        thumb.Current.Destination = end.Current;
-                        UpdateThumb(thumb.Current);
+                        if (dwmEnabled)
+                        {
+                            thumb.Destination = end;
+                            UpdateThumb(thumb);
+                        }
+                        else
+                        {
+                            thumb.Rect = end;
+                        }
                     }
                 }
+                if (!dwmEnabled)
+                    Invoke(new VoidDelegate(Invalidate));
                 int ms = (n == 0) ? 100 : 20;
                 System.Threading.Thread.Sleep(ms);
             }
         }
 
-        private PSIZE UpdateThumb(IntPtr thumb, Rect dest)
+        private PSIZE UpdateThumb(IntPtr thumb, RECT dest)
         {
             if (thumb != IntPtr.Zero)
             {
@@ -610,7 +633,7 @@ namespace Kieker
                 DWM_THUMBNAIL_PROPERTIES props = new DWM_THUMBNAIL_PROPERTIES();
                 props.dwFlags = Constants.DWM_TNP_VISIBLE | Constants.DWM_TNP_RECTDESTINATION;
                 props.fVisible = true;
-                props.rcDestination = new Rect(dest.Left, dest.Top, dest.Right, dest.Bottom);
+                props.rcDestination = new RECT(dest.Left, dest.Top, dest.Right, dest.Bottom);
                 if (size.x < dest.Right - dest.Left)
                     props.rcDestination.Right = props.rcDestination.Left + size.x;
                 if (size.y < dest.Bottom - dest.Top)
