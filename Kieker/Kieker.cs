@@ -21,7 +21,6 @@ namespace Kieker
         private List<Window> windows = new List<Window>();
         private RectNode thumbRects;
         private bool debug = false;
-        private Shell32.ShellClass shell = new Shell32.ShellClass();
         private bool modifier = false;
         private bool key = false;
         private bool action = false;
@@ -79,13 +78,13 @@ namespace Kieker
         {
             if (debug)
             {
-                Graphics g = this.CreateGraphics();
+                Graphics g = e.Graphics;
                 foreach (Window window in windows)
                 {
                     if (window.Thumb != null)
                     {
                         Rectangle rect = window.Thumb.Rect;
-                        g.FillRectangle(new SolidBrush(Color.FromArgb(100, 100, 100, 100)), rect);
+                        g.DrawRectangle(new Pen(Color.Red), rect.GetExpanded(-1, -1));
                     }
                 }
             }
@@ -193,7 +192,7 @@ namespace Kieker
         protected void AssignThumbnails(IEnumerable<Window> windows)
         {
             IEnumerable<Window> sortedWindows = windows.OrderBy(w => 
-                w.GetRect(true).Value.Area()).Reverse();
+                w.GetBounds().Area()).Reverse();
             double factor = 1d;
             bool allFit = false;
             while (!allFit)
@@ -207,14 +206,14 @@ namespace Kieker
                 }
                 foreach (Window window in sortedWindows)
                 {
-                    Rectangle scaledRect = window.GetRect(true).Value.GetScaled(factor);
+                    Rectangle scaledRect = window.GetBounds().GetScaled(factor);
                     allFit &= tree.InsertAndUpdate(ref scaledRect);
                     if (allFit) window.Thumb.Destination = scaledRect.GetExpanded(-10, -10);
                     else break;
                 }
                 factor -= 0.1;
             }
-            Console.WriteLine("Factor: " + (factor + 0.1));
+            //Console.WriteLine("Factor: " + (factor + 0.1));
             foreach (Window window in windows)
             {
                 if (dwmEnabled)

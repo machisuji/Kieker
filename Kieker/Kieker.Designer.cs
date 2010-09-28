@@ -80,6 +80,7 @@
             this.Name = "ThumbView";
             this.ShowInTaskbar = false;
             this.Text = "Kieker";
+            this.TopMost = true;
             this.TransparencyKey = System.Drawing.Color.Cyan;
             this.WindowState = System.Windows.Forms.FormWindowState.Maximized;
             this.Load += new System.EventHandler(this.Kieker_Load);

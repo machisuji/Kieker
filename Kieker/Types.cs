@@ -57,8 +57,6 @@ namespace Kieker
         private Nullable<Point> lastPosition = new Nullable<Point>();
         private Nullable<WINDOWPLACEMENT> placement = new Nullable<WINDOWPLACEMENT>();
 
-        public Window() { }
-
         public Window(IntPtr handle)
         {
             this.handle = handle;
@@ -145,7 +143,10 @@ namespace Kieker
             if (!this.placement.HasValue && detect)
             {
                 WINDOWPLACEMENT windowPlacement = WINDOWPLACEMENT.New();
-                User32.GetWindowPlacement(this.handle, out windowPlacement);
+                if (!User32.GetWindowPlacement(this.handle, out windowPlacement))
+                {
+                    Console.WriteLine("GetWindowPlacement FAIL!");
+                }
                 this.placement = new Nullable<WINDOWPLACEMENT>(windowPlacement);
             }
             return this.placement;
@@ -165,6 +166,25 @@ namespace Kieker
                 this.rect = new Nullable<Rectangle>(rect.ToRectangle());
             }
             return this.rect;
+        }
+
+        /// <summary>
+        /// Retrieves this window's bounds,
+        /// which are a result of either a call to GetRect or GetPlacement
+        /// depending on the window state.
+        /// </summary>
+        /// <returns></returns>
+        public Rectangle GetBounds()
+        {
+            if (User32.IsIconic(this.Handle))
+            {
+                WINDOWPLACEMENT placement = GetPlacement(true).Value;
+                return placement.normalPosition.ToRectangle();
+            }
+            else
+            {
+                return GetRect(true).Value;
+            }
         }
 
         public Bitmap GetStaticThumb()

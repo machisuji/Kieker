@@ -37,6 +37,7 @@
             // cbIncludeMinimizedWindows
             // 
             this.cbIncludeMinimizedWindows.AutoSize = true;
+            this.cbIncludeMinimizedWindows.Enabled = false;
             this.cbIncludeMinimizedWindows.Location = new System.Drawing.Point(12, 12);
             this.cbIncludeMinimizedWindows.Name = "cbIncludeMinimizedWindows";
             this.cbIncludeMinimizedWindows.Size = new System.Drawing.Size(157, 17);
@@ -55,7 +56,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(650, 502);
+            this.ClientSize = new System.Drawing.Size(193, 286);
             this.Controls.Add(this.cbIncludeMinimizedWindows);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Settings";

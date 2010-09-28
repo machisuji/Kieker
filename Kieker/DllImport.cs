@@ -12,6 +12,11 @@ namespace Kieker
         {
             public int x;
             public int y;
+
+            public override String ToString()
+            {
+                return x.ToString() + "x" + y.ToString();
+            }
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -28,10 +33,10 @@ namespace Kieker
         [StructLayout(LayoutKind.Sequential)]
         public struct POINT
         {
-            public long x;
-            public long y;
+            public int x;
+            public int y;
 
-            public POINT(long x, long y)
+            public POINT(int x, int y)
             {
                 this.x = x;
                 this.y = y;
@@ -39,7 +44,12 @@ namespace Kieker
 
             public Point ToPoint()
             {
-                return new Point((int)x, (int)y);
+                return new Point(x, y);
+            }
+
+            public override string ToString()
+            {
+                return x.ToString() + "x" + y.ToString();
             }
         }
 
@@ -85,6 +95,12 @@ namespace Kieker
                 WINDOWPLACEMENT ret = new WINDOWPLACEMENT();
                 ret.length = (uint)System.Runtime.InteropServices.Marshal.SizeOf(ret);
                 return ret;
+            }
+
+            public override string ToString()
+            {
+                return "WNDPLMNT[min: " + minPosition.ToString() + ", max: " + maxPosition +
+                    ", normal: " + normalPosition.ToString() + "]";
             }
         }
 
