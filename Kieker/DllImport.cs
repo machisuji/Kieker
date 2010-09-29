@@ -201,6 +201,9 @@ namespace Kieker
             public static extern IntPtr GetDC(IntPtr hwnd);
 
             [DllImport("user32.dll")]
+            public static extern bool SetWindowPlacement(IntPtr hwnd, ref WINDOWPLACEMENT wndpl);
+
+            [DllImport("user32.dll")]
             public static extern bool GetWindowPlacement(IntPtr hwnd, out WINDOWPLACEMENT wndpl);
 
             [DllImport("user32.dll")]

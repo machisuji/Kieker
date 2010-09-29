@@ -271,7 +271,11 @@ namespace Kieker
                     SetForegroundThumb(target);
                 else
                     windows.MoveToEnd(target);
-                DoMoveThumbsBack();
+                if (target.IsIconic())
+                {
+                    User32.ShowWindow(target.Handle, Constants.SW_RESTORE);
+                }
+                MoveThumbs(windows, false, target);
                 UnhideWindows();
                 User32.SetForegroundWindow(target.Handle);
                 Invoke(new VoidDelegate(Hide));
@@ -296,12 +300,14 @@ namespace Kieker
         {
             foreach (Window window in windows)
             {
-                RECT bounds = new RECT();
-                User32.GetWindowRect(window.Handle, out bounds);
-                window.LastPosition = new Nullable<Point>(new Point(bounds.Left, bounds.Top));
-                User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16019, -16087, -1, -1,
-                    Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | /*Constants.SWP_NOREDRAW |*/
-                    Constants.SWP_NOSENDCHANGING | Constants.SWP_NOACTIVATE);
+                if (!window.IsIconic())
+                {
+                    Rectangle bounds = window.GetRect(true).Value;
+                    window.LastPosition = new Nullable<Point>(new Point(bounds.Left, bounds.Top));
+                    User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16019, -16087, -1, -1,
+                        Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | /*Constants.SWP_NOREDRAW |*/
+                        Constants.SWP_NOSENDCHANGING | Constants.SWP_NOACTIVATE);
+                }
             }
         }
 
@@ -309,24 +315,14 @@ namespace Kieker
         {
             foreach (Window window in windows)
             {
-                if (window.Placement.HasValue) // minimized window
-                {
-                    Rectangle bounds = window.Placement.Value.normalPosition.ToRectangle();
-                    User32.ShowWindow(window.Handle, Constants.SW_MINIMIZE);
-                    User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, bounds.X, bounds.Y,
-                        -1, -1, Constants.SWP_NOSIZE | Constants.SWP_NOZORDER | Constants.SWP_NOREDRAW |
-                        Constants.SWP_NOREPOSITION | Constants.SWP_NOSENDCHANGING | Constants.SWP_NOMOVE);
-                    User32.ShowWindow(window.Handle, Constants.SW_MINIMIZE);
-                }
-                else if (window.LastPosition.HasValue) // normal window
+                if (window.LastPosition.HasValue) // normal window
                 {
                     Point pos = window.LastPosition.Value;
                     User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, pos.X, pos.Y, 
                         -1, -1, Constants.SWP_NOSIZE | Constants.SWP_NOACTIVATE | Constants.SWP_NOZORDER |
                         Constants.SWP_NOSENDCHANGING | Constants.SWP_NOREDRAW);
+                    window.LastPosition = new Nullable<Point>();
                 }
-                window.Placement = new Nullable<WINDOWPLACEMENT>();
-                window.LastPosition = new Nullable<Point>();
             }
         }
 
@@ -515,17 +511,11 @@ namespace Kieker
             {
                 SetForegroundThumb(previousForegroundWindow);
             }
-            new Thread(new ThreadStart(DoMoveThumbs)).Start();
-        }
-
-        void DoMoveThumbs()
-        {
-            MoveThumbs(windows);
-        }
-
-        void DoMoveThumbsBack()
-        {
-            MoveThumbsBack(windows);
+            Action animation = () =>
+            {
+                MoveThumbs(windows, true, null);
+            };
+            animation.Fork();
         }
 
         private List<RECT> CalculateThumbDestinations(RECT dest, int thumbCount)
@@ -565,17 +555,7 @@ namespace Kieker
             return size;
         }
 
-        private void MoveThumbs(List<Window> windows)
-        {
-            MoveThumbs(windows, true);
-        }
-
-        private void MoveThumbsBack(List<Window> windows)
-        {
-            MoveThumbs(windows, false);
-        }
-
-        private void MoveThumbs(List<Window> windows, bool forth)
+        private void MoveThumbs(List<Window> windows, bool forth, Window target)
         {
             int steps = 25;
             for (int n = 0; n <= steps; ++n)
@@ -592,17 +572,17 @@ namespace Kieker
                 foreach (Window window in windows)
                 {
                     Thumb thumb = window.Thumb;
-                    Rectangle start = forth ? window.GetRect(true).Value : thumb.Destination;
-                    Rectangle end = forth ? thumb.Destination : window.GetRect(true).Value;
+                    Rectangle start = forth ? window.GetAnimationBounds() : thumb.Destination;
+                    Rectangle end = forth ?
+                        thumb.Destination :
+                        (window != target ? window.GetAnimationBounds() : window.GetBounds());
                     if (n < steps)
                     {
                         Rectangle intermediate = GetIntermediate(start, end, (float)f);
                         if (dwmEnabled)
                             UpdateThumb(thumb.Value, intermediate.ToRect());
                         else
-                        {
                             thumb.Rect = intermediate; // we're gonna paint it ourselves
-                        }
                     }
                     else
                     {

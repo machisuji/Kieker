@@ -176,7 +176,7 @@ namespace Kieker
         /// <returns></returns>
         public Rectangle GetBounds()
         {
-            if (User32.IsIconic(this.Handle))
+            if (IsIconic())
             {
                 WINDOWPLACEMENT placement = GetPlacement(true).Value;
                 return placement.normalPosition.ToRectangle();
@@ -185,6 +185,24 @@ namespace Kieker
             {
                 return GetRect(true).Value;
             }
+        }
+
+        /// <summary>
+        /// Returns the (initial) bounds as used by the thumb animation.
+        /// If the window is normal this is the actual rectangle the window currently is in.
+        /// On the other hand, if the window is minimized, the bounds will not be the actual
+        /// bounds at -32k x -32k, but instead something else best fitting for the animation.
+        /// </summary>
+        /// <returns></returns>
+        public Rectangle GetAnimationBounds()
+        {
+            Rectangle bounds = GetBounds();
+            if (IsIconic())
+            {
+                bounds.X = -bounds.Width;
+                bounds.Y = -bounds.Height;
+            }
+            return bounds;
         }
 
         public Bitmap GetStaticThumb()
@@ -250,6 +268,11 @@ namespace Kieker
                 Console.WriteLine("Could not create device context for '" + this.title + "'");
             }
             return null;
+        }
+
+        public bool IsIconic()
+        {
+            return User32.IsIconic(this.Handle);
         }
 
         public override string ToString()
