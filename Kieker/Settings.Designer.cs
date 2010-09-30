@@ -37,7 +37,6 @@
             // cbIncludeMinimizedWindows
             // 
             this.cbIncludeMinimizedWindows.AutoSize = true;
-            this.cbIncludeMinimizedWindows.Enabled = false;
             this.cbIncludeMinimizedWindows.Location = new System.Drawing.Point(12, 12);
             this.cbIncludeMinimizedWindows.Name = "cbIncludeMinimizedWindows";
             this.cbIncludeMinimizedWindows.Size = new System.Drawing.Size(157, 17);

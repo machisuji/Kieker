@@ -48,13 +48,18 @@ namespace Kieker
             DwmApi.DwmIsCompositionEnabled(out dwmEnabled);
         }
 
+        protected override void OnLoad(EventArgs e)
+        {
+            this.Visible = false;
+            base.OnLoad(e);
+        }
+
         private void Kieker_Load(object sender, EventArgs e)
         {
             this.settings = new Settings();
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
-            this.Hide();
         }
 
         void HookManager_KeyUp(object sender, KeyEventArgs e)
@@ -86,6 +91,14 @@ namespace Kieker
                         Rectangle rect = window.Thumb.Rect;
                         g.DrawRectangle(new Pen(Color.Red), rect.GetExpanded(-1, -1));
                     }
+                }
+            }
+            foreach (Window window in windows.FindAll(w => w.IsIconic()))
+            {
+                if (window.Thumb != null)
+                {
+                    Rectangle rect = window.Thumb.Rect;
+                    e.Graphics.FillRectangle(new SolidBrush(Color.Red), rect);
                 }
             }
             rectPainter.Paint(sender, e);
