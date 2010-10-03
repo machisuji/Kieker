@@ -65,6 +65,8 @@ namespace Kieker
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
+
+            settings.LoadSettings();
         }
 
         void HookManager_KeyUp(object sender, KeyEventArgs e)
@@ -407,6 +409,7 @@ namespace Kieker
 
         private void Exit()
         {
+            settings.SaveSettings();
             ClearThumbnails();
             settings.Dispose();
             settings = null;
