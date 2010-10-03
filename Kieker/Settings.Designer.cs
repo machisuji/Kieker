@@ -32,6 +32,7 @@
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Settings));
             this.cbIncludeMinimizedWindows = new System.Windows.Forms.CheckBox();
             this.ttIncludeMinimizedWindows = new System.Windows.Forms.ToolTip(this.components);
+            this.cbIndicateMinimizedWindows = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // cbIncludeMinimizedWindows
@@ -51,11 +52,25 @@
             // 
             this.ttIncludeMinimizedWindows.Popup += new System.Windows.Forms.PopupEventHandler(this.toolTip1_Popup);
             // 
+            // cbIndicateMinimizedWindows
+            // 
+            this.cbIndicateMinimizedWindows.AutoSize = true;
+            this.cbIndicateMinimizedWindows.Location = new System.Drawing.Point(12, 35);
+            this.cbIndicateMinimizedWindows.Name = "cbIndicateMinimizedWindows";
+            this.cbIndicateMinimizedWindows.Size = new System.Drawing.Size(160, 17);
+            this.cbIndicateMinimizedWindows.TabIndex = 2;
+            this.cbIndicateMinimizedWindows.Text = "Indicate Minimized Windows";
+            this.ttIncludeMinimizedWindows.SetToolTip(this.cbIndicateMinimizedWindows, "Check this box if you want minimized windows to be indicated.\r\nThis only makes se" +
+                    "nse when those windows are included.");
+            this.cbIndicateMinimizedWindows.UseVisualStyleBackColor = true;
+            this.cbIndicateMinimizedWindows.CheckedChanged += new System.EventHandler(this.cbIndicateMinimizedWindows_CheckedChanged);
+            // 
             // Settings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(193, 286);
+            this.Controls.Add(this.cbIndicateMinimizedWindows);
             this.Controls.Add(this.cbIncludeMinimizedWindows);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "Settings";
@@ -70,5 +85,6 @@
 
         private System.Windows.Forms.CheckBox cbIncludeMinimizedWindows;
         private System.Windows.Forms.ToolTip ttIncludeMinimizedWindows;
+        private System.Windows.Forms.CheckBox cbIndicateMinimizedWindows;
     }
 }

@@ -25,6 +25,11 @@ namespace Kieker
         private bool key = false;
         private bool action = false;
         private bool unaction = false;
+        /// <summary>
+        /// The selection mode is active when the initial thumb animation has finished
+        /// and the thumbs are in their final position, waiting for the user's selection.
+        /// </summary>
+        private bool selectionActive = false;
         private readonly Object animationLock = new Object();
         private bool pauseAnimation = false;
         private delegate void VoidDelegate();
@@ -93,12 +98,15 @@ namespace Kieker
                     }
                 }
             }
-            foreach (Window window in windows.FindAll(w => w.IsIconic()))
+            if (selectionActive && settings.IndicateMinimizedwindows)
             {
-                if (window.Thumb != null)
+                foreach (Window window in windows.FindAll(w => w.IsIconic()))
                 {
-                    Rectangle rect = window.Thumb.Rect;
-                    e.Graphics.FillRectangle(new SolidBrush(Color.Red), rect);
+                    if (window.Thumb != null)
+                    {
+                        Rectangle rect = window.Thumb.Rect;
+                        e.Graphics.FillRectangle(new SolidBrush(Color.Gray), rect);
+                    }
                 }
             }
             rectPainter.Paint(sender, e);
@@ -200,6 +208,10 @@ namespace Kieker
             {
                 Invalidate();
             }
+            else if (e.KeyCode == Keys.Escape)
+            {
+                Unaction(null);
+            }
         }
 
         protected void AssignThumbnails(IEnumerable<Window> windows)
@@ -279,18 +291,24 @@ namespace Kieker
         void Unaction(Window target)
         {
             Action theAction = () => {
+                selectionActive = false;
+                Invalidate();
                 unaction = true;
-                if (dwmEnabled)
-                    SetForegroundThumb(target);
-                else
-                    windows.MoveToEnd(target);
-                if (target.IsIconic())
+                if (target != null)
                 {
-                    User32.ShowWindow(target.Handle, Constants.SW_RESTORE);
+                    if (dwmEnabled)
+                        SetForegroundThumb(target);
+                    else
+                        windows.MoveToEnd(target);
+                    if (target.IsIconic())
+                    {
+                        User32.ShowWindow(target.Handle, Constants.SW_RESTORE);
+                    }
                 }
                 MoveThumbs(windows, false, target);
                 UnhideWindows();
-                User32.SetForegroundWindow(target.Handle);
+                if (target != null)
+                    User32.SetForegroundWindow(target.Handle);
                 Invoke(new VoidDelegate(Hide));
                 ClearThumbnails();
                 unaction = false;
@@ -527,6 +545,8 @@ namespace Kieker
             Action animation = () =>
             {
                 MoveThumbs(windows, true, null);
+                selectionActive = true;
+                Invalidate();
             };
             animation.Fork();
         }
