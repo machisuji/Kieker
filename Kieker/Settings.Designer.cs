@@ -55,6 +55,7 @@
             // cbIndicateMinimizedWindows
             // 
             this.cbIndicateMinimizedWindows.AutoSize = true;
+            this.cbIndicateMinimizedWindows.Enabled = false;
             this.cbIndicateMinimizedWindows.Location = new System.Drawing.Point(12, 35);
             this.cbIndicateMinimizedWindows.Name = "cbIndicateMinimizedWindows";
             this.cbIndicateMinimizedWindows.Size = new System.Drawing.Size(160, 17);

@@ -26,7 +26,7 @@ namespace Kieker
             loadActions.Add("includeMinimizedWindows",
                 (value) => includeMinimizedWindows = Boolean.Parse(value));
             loadActions.Add("indicateMinimizedWindows",
-                (value) => { indicateMinimizedWindows = Boolean.Parse(value); Console.WriteLine("val: " + value); });
+                (value) => indicateMinimizedWindows = Boolean.Parse(value));
         }
 
         public bool IncludeMinimizedWindows
