@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // Allgemeine Informationen über eine Assembly werden über die folgenden 
 // Attribute gesteuert. Ändern Sie diese Attributwerte, um die Informationen zu ändern,
 // die mit einer Assembly verknüpft sind.
-[assembly: AssemblyTitle("Peepgrid")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Kieker")]
+[assembly: AssemblyDescription("A Window Switcher")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Microsoft")]
-[assembly: AssemblyProduct("Peepgrid")]
-[assembly: AssemblyCopyright("Copyright © Microsoft 2010")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("Kieker")]
+[assembly: AssemblyCopyright("Copyright © Markus Kahl 2010")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

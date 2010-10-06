@@ -38,6 +38,9 @@ namespace Kieker
         private IntPtr windowHandle;
         private RectPainter rectPainter;
 
+        private Rectangle? highlightRect = new Nullable<Rectangle>();
+        private Window focusedWindow;
+
         private KeyEventHandler globalKeyUp;
         private KeyEventHandler globalKeyDown;
 
@@ -55,6 +58,7 @@ namespace Kieker
             this.KeyDown += new KeyEventHandler(this.Kieker_KeyDown);
             this.MouseClick += new MouseEventHandler(Kieker_MouseClick);
             this.Paint += new PaintEventHandler(Kieker_Paint);
+            this.MouseMove += new MouseEventHandler(ThumbView_MouseMove);
 
             rectPainter.Enabled = false;
             DwmApi.DwmIsCompositionEnabled(out dwmEnabled);
@@ -74,6 +78,33 @@ namespace Kieker
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
 
             settings.LoadSettings();
+        }
+
+        void ThumbView_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (selectionActive)
+            {
+                bool none = true;
+                foreach (Window window in windows)
+                {
+                    if (window.Thumb.Rect.Contains(e.Location))
+                    {
+                        if (focusedWindow != window)
+                        {
+                            highlightRect = new Nullable<Rectangle>(window.Thumb.Rect.GetExpanded(5, 5));
+                            focusedWindow = window;
+                            Invalidate();
+                        }
+                        none = false;
+                    }
+                }
+                if (none)
+                {
+                    focusedWindow = null;
+                    highlightRect = new Nullable<Rectangle>();
+                    Invalidate();
+                }
+            }
         }
 
         void HookManager_KeyUp(object sender, KeyEventArgs e)
@@ -98,18 +129,6 @@ namespace Kieker
                 e.Handled = true;
                 Action();
             }
-            /*if (settings.IsHotkey(e.KeyData))
-            {
-                //e.Handled = true;
-                //Action();
-                var foo = new KeyEventHandler(HookManager_KeyDown);
-                foo += foo;
-                Console.WriteLine("Hotkey matched!");
-            }
-            else
-            {
-                Console.WriteLine("No Match");
-            }*/
         }
 
         void Kieker_Paint(object sender, PaintEventArgs e)
@@ -126,15 +145,22 @@ namespace Kieker
                     }
                 }
             }
-            if (selectionActive && settings.IndicateMinimizedwindows)
+            if (selectionActive)
             {
-                foreach (Window window in windows.FindAll(w => w.IsIconic()))
+                if (settings.IndicateMinimizedwindows)
                 {
-                    if (window.Thumb != null)
+                    foreach (Window window in windows.FindAll(w => w.IsIconic()))
                     {
-                        Rectangle rect = window.Thumb.Rect;
-                        e.Graphics.FillRectangle(new SolidBrush(Color.Gray), rect);
+                        if (window.Thumb != null)
+                        {
+                            Rectangle rect = window.Thumb.Rect;
+                            e.Graphics.FillRectangle(new SolidBrush(Color.Gray), rect);
+                        }
                     }
+                }
+                if (highlightRect.HasValue)
+                {
+                    e.Graphics.DrawRectangle(new Pen(SystemColors.ControlLight, 2), highlightRect.Value);
                 }
             }
             rectPainter.Paint(sender, e);
