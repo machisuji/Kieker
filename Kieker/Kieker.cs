@@ -25,6 +25,7 @@ namespace Kieker
         private bool key = false;
         private bool action = false;
         private bool unaction = false;
+        private bool hotkeyEnabled = true;
         /// <summary>
         /// The selection mode is active when the initial thumb animation has finished
         /// and the thumbs are in their final position, waiting for the user's selection.
@@ -37,10 +38,16 @@ namespace Kieker
         private IntPtr windowHandle;
         private RectPainter rectPainter;
 
+        private KeyEventHandler globalKeyUp;
+        private KeyEventHandler globalKeyDown;
+
         private bool dwmEnabled = false;
 
         public ThumbView()
         {
+            this.globalKeyUp = new KeyEventHandler(HookManager_Dummy);
+            this.globalKeyDown = new KeyEventHandler(HookManager_Dummy);
+
             InitializeComponent();
 
             this.rectPainter = new RectPainter(this);
@@ -61,7 +68,7 @@ namespace Kieker
 
         private void Kieker_Load(object sender, EventArgs e)
         {
-            this.settings = new Settings();
+            this.settings = new Settings(this);
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
@@ -71,19 +78,38 @@ namespace Kieker
 
         void HookManager_KeyUp(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.LWin) modifier = false;
-            else if (e.KeyCode == Keys.Oem5) key = false;
+            globalKeyUp.Invoke(sender, e);
+            if (e.KeyCode == settings.Modifier) modifier = false;
+            else if (e.KeyCode == settings.Hotkey) key = false;
+        }
+
+        protected void HookManager_Dummy(object sender, KeyEventArgs e)
+        {
+            // do nuttin
         }
 
         void HookManager_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.LWin) modifier = true;
-            else if (e.KeyCode == Keys.Oem5) key = true;
-            if (!Visible && !action && modifier && key)
+            globalKeyDown.Invoke(sender, e);
+            if (e.KeyCode == settings.Modifier) modifier = true;
+            else if (e.KeyCode == settings.Hotkey) key = true;
+            if (hotkeyEnabled && !Visible && !action && modifier && key)
             {
                 e.Handled = true;
                 Action();
             }
+            /*if (settings.IsHotkey(e.KeyData))
+            {
+                //e.Handled = true;
+                //Action();
+                var foo = new KeyEventHandler(HookManager_KeyDown);
+                foo += foo;
+                Console.WriteLine("Hotkey matched!");
+            }
+            else
+            {
+                Console.WriteLine("No Match");
+            }*/
         }
 
         void Kieker_Paint(object sender, PaintEventArgs e)
@@ -282,6 +308,7 @@ namespace Kieker
                 IntPtr hforegroundWindow = User32.GetForegroundWindow();
                 ClearThumbnails();
                 Invoke(new VoidDelegate(Show));
+                Invoke(new VoidDelegate(Activate));
                 //CoverMinimizedWindows(windows.FindAll(w => User32.IsIconic(w.Handle)));
                 ShowThumbnailsAnimated(hforegroundWindow);
                 HideWindows(windows);
@@ -635,7 +662,7 @@ namespace Kieker
                 }
                 if (!dwmEnabled)
                     Invoke(new VoidDelegate(Invalidate));
-                int ms = (n == 0) ? 100 : 20;
+                int ms = (n == 0) ? 100 : 15;
                 System.Threading.Thread.Sleep(ms);
             }
         }
@@ -750,6 +777,24 @@ namespace Kieker
             {
                 User32.ShowWindow(window.Handle, cmd);
             }
+        }
+
+        public bool HotkeyEnabled
+        {
+            get { return hotkeyEnabled; }
+            set { this.hotkeyEnabled = value; }
+        }
+
+        public KeyEventHandler GlobalKeyUp
+        {
+            get { return globalKeyUp; }
+            set { globalKeyUp = value; }
+        }
+
+        public KeyEventHandler GlobalKeyDown
+        {
+            get { return globalKeyDown; }
+            set { globalKeyDown = value; }
         }
     }
 }

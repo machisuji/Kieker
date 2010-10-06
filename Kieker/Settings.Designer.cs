@@ -33,6 +33,12 @@
             this.cbIncludeMinimizedWindows = new System.Windows.Forms.CheckBox();
             this.ttIncludeMinimizedWindows = new System.Windows.Forms.ToolTip(this.components);
             this.cbIndicateMinimizedWindows = new System.Windows.Forms.CheckBox();
+            this.txtHotkey = new System.Windows.Forms.TextBox();
+            this.btnHotkey = new System.Windows.Forms.Button();
+            this.lblHotkey = new System.Windows.Forms.Label();
+            this.lblModifier = new System.Windows.Forms.Label();
+            this.txtModifier = new System.Windows.Forms.TextBox();
+            this.btnModifier = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // cbIncludeMinimizedWindows
@@ -66,11 +72,71 @@
             this.cbIndicateMinimizedWindows.UseVisualStyleBackColor = true;
             this.cbIndicateMinimizedWindows.CheckedChanged += new System.EventHandler(this.cbIndicateMinimizedWindows_CheckedChanged);
             // 
+            // txtHotkey
+            // 
+            this.txtHotkey.Enabled = false;
+            this.txtHotkey.Location = new System.Drawing.Point(56, 115);
+            this.txtHotkey.Name = "txtHotkey";
+            this.txtHotkey.Size = new System.Drawing.Size(84, 20);
+            this.txtHotkey.TabIndex = 3;
+            // 
+            // btnHotkey
+            // 
+            this.btnHotkey.Location = new System.Drawing.Point(146, 112);
+            this.btnHotkey.Name = "btnHotkey";
+            this.btnHotkey.Size = new System.Drawing.Size(75, 23);
+            this.btnHotkey.TabIndex = 4;
+            this.btnHotkey.Text = "Change";
+            this.btnHotkey.UseVisualStyleBackColor = true;
+            this.btnHotkey.Click += new System.EventHandler(this.btnHotkey_Click);
+            // 
+            // lblHotkey
+            // 
+            this.lblHotkey.AutoSize = true;
+            this.lblHotkey.Location = new System.Drawing.Point(6, 118);
+            this.lblHotkey.Name = "lblHotkey";
+            this.lblHotkey.Size = new System.Drawing.Size(44, 13);
+            this.lblHotkey.TabIndex = 5;
+            this.lblHotkey.Text = "Hotkey:";
+            // 
+            // lblModifier
+            // 
+            this.lblModifier.AutoSize = true;
+            this.lblModifier.Location = new System.Drawing.Point(6, 144);
+            this.lblModifier.Name = "lblModifier";
+            this.lblModifier.Size = new System.Drawing.Size(47, 13);
+            this.lblModifier.TabIndex = 7;
+            this.lblModifier.Text = "Modifier:";
+            // 
+            // txtModifier
+            // 
+            this.txtModifier.Enabled = false;
+            this.txtModifier.Location = new System.Drawing.Point(56, 141);
+            this.txtModifier.Name = "txtModifier";
+            this.txtModifier.Size = new System.Drawing.Size(84, 20);
+            this.txtModifier.TabIndex = 6;
+            // 
+            // btnModifier
+            // 
+            this.btnModifier.Location = new System.Drawing.Point(146, 139);
+            this.btnModifier.Name = "btnModifier";
+            this.btnModifier.Size = new System.Drawing.Size(75, 23);
+            this.btnModifier.TabIndex = 8;
+            this.btnModifier.Text = "Change";
+            this.btnModifier.UseVisualStyleBackColor = true;
+            this.btnModifier.Click += new System.EventHandler(this.btnModifier_Click);
+            // 
             // Settings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(193, 286);
+            this.ClientSize = new System.Drawing.Size(233, 246);
+            this.Controls.Add(this.btnModifier);
+            this.Controls.Add(this.lblModifier);
+            this.Controls.Add(this.txtModifier);
+            this.Controls.Add(this.lblHotkey);
+            this.Controls.Add(this.btnHotkey);
+            this.Controls.Add(this.txtHotkey);
             this.Controls.Add(this.cbIndicateMinimizedWindows);
             this.Controls.Add(this.cbIncludeMinimizedWindows);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -87,5 +153,11 @@
         private System.Windows.Forms.CheckBox cbIncludeMinimizedWindows;
         private System.Windows.Forms.ToolTip ttIncludeMinimizedWindows;
         private System.Windows.Forms.CheckBox cbIndicateMinimizedWindows;
+        private System.Windows.Forms.TextBox txtHotkey;
+        private System.Windows.Forms.Button btnHotkey;
+        private System.Windows.Forms.Label lblHotkey;
+        private System.Windows.Forms.Label lblModifier;
+        private System.Windows.Forms.TextBox txtModifier;
+        private System.Windows.Forms.Button btnModifier;
     }
 }
