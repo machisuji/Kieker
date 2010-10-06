@@ -128,20 +128,27 @@ namespace Kieker
 
         public void LoadSettings()
         {
-            foreach (String line in File.ReadAllLines("kieker.ini"))
+            try
             {
-                try
+                foreach (String line in File.ReadAllLines("kieker.ini"))
                 {
-                    String[] tokens = line.Split('=');
-                    String key = tokens[0].Trim();
-                    String value = tokens[1].Trim();
-                    loadActions[key].Invoke(value);
+                    try
+                    {
+                        String[] tokens = line.Split('=');
+                        String key = tokens[0].Trim();
+                        String value = tokens[1].Trim();
+                        loadActions[key].Invoke(value);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine("Could not parse settings line: " + line +
+                            " (" + e.Message + ")");
+                    }
                 }
-                catch (Exception e)
-                {
-                    Console.WriteLine("Could not parse settings line: " + line +
-                        " (" + e.Message + ")");
-                }
+            }
+            catch (FileNotFoundException e)
+            {
+                Console.WriteLine("kieker.ini not found");
             }
         }
 
