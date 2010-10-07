@@ -11,7 +11,7 @@ namespace Kieker
         /// <summary>
         /// Handle to the DWM Thumb
         /// </summary>
-        public IntPtr Value;
+        public IntPtr Handle;
 
         /// <summary>
         /// Destination rect
@@ -24,15 +24,109 @@ namespace Kieker
         /// </summary>
         public Rectangle Rect;
 
-        public Thumb(IntPtr value, Rectangle destination)
+        public Thumb(IntPtr handle, Rectangle destination)
         {
-            Value = value;
+            Handle = handle;
             Destination = destination;
+        }
+
+        /// <summary>
+        /// Grows the thumb without actually changing the destination.
+        /// Only the current thumb view will grow.
+        /// Upon the next call of #Update() it will resume its original size.
+        /// </summary>
+        /// <param name="percent"></param>
+        public void GrowBy(double percent)
+        {
+            int width = Destination.Width;
+            int height = Destination.Height;
+            Update(Destination.GetExpanded((int)(width * percent), (int)(height * percent)));
+        }
+
+        /// <summary>
+        /// Shows the thumb at its current destination and updates the thumb's rect field accordingly.
+        /// </summary>
+        public void Update()
+        {
+            UpdateThumb(this);
+        }
+
+        /// <summary>
+        /// Shows the thumb at the given rectangle without changing the thumb's rect field.
+        /// </summary>
+        /// <param name="dest"></param>
+        public void Update(Rectangle dest)
+        {
+            UpdateThumb(this.Handle, dest.ToRect());
+        }
+
+        private void UpdateThumb(Thumb thumb)
+        {
+            PSIZE size = UpdateThumb(thumb.Handle, thumb.Destination.ToRect());
+            PSIZE thumbSize = GetThumbSize(size, thumb.Destination);
+            thumb.Rect = new Rectangle(thumb.Destination.Left, thumb.Destination.Top,
+                thumbSize.x, thumbSize.y);
+        }
+
+        private PSIZE UpdateThumb(IntPtr thumb, RECT dest)
+        {
+            if (thumb != IntPtr.Zero)
+            {
+                PSIZE size = GetSourceSize(thumb);
+                DWM_THUMBNAIL_PROPERTIES props = new DWM_THUMBNAIL_PROPERTIES();
+                props.dwFlags = Constants.DWM_TNP_VISIBLE | Constants.DWM_TNP_RECTDESTINATION;
+                props.fVisible = true;
+                props.rcDestination = new RECT(dest.Left, dest.Top, dest.Right, dest.Bottom);
+                if (size.x < dest.Right - dest.Left)
+                    props.rcDestination.Right = props.rcDestination.Left + size.x;
+                if (size.y < dest.Bottom - dest.Top)
+                    props.rcDestination.Bottom = props.rcDestination.Top + size.y;
+                DwmApi.DwmUpdateThumbnailProperties(thumb, ref props);
+                return size;
+            }
+            else
+            {
+                return new PSIZE();
+            }
+        }
+
+        private PSIZE GetThumbSize(PSIZE sourceSize, Rectangle destination)
+        {
+            if (sourceSize.x < destination.Width && sourceSize.y < destination.Height)
+            {
+                return sourceSize;
+            }
+            else
+            {
+                PSIZE size = new PSIZE();
+                float whq = sourceSize.x / (float)sourceSize.y; // width-height quotient
+                int respectiveHeight = (int)(destination.Width / whq);
+                int respectiveWidth = (int)(destination.Height * whq);
+                if ((whq < 1 && respectiveHeight <= destination.Height) ||
+                    respectiveWidth > destination.Width)
+                {
+                    size.x = destination.Width;
+                    size.y = respectiveHeight;
+                }
+                else
+                {
+                    size.x = respectiveWidth;
+                    size.y = destination.Height;
+                }
+                return size;
+            }
+        }
+
+        private PSIZE GetSourceSize(IntPtr thumb)
+        {
+            PSIZE size;
+            DwmApi.DwmQueryThumbnailSourceSize(thumb, out size);
+            return size;
         }
 
         public override string ToString()
         {
-            return "Thumb " + Value.ToString() + " @" + Destination.ToString();
+            return "Thumb " + Handle.ToString() + " @" + Destination.ToString();
         }
     }
 

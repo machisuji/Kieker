@@ -171,7 +171,7 @@ namespace Kieker
                 foreach (Window window in windows)
                 {
                     Thumb thumb = window.Thumb;
-                    if (thumb.Value.Equals(IntPtr.Zero) && window.Rect.HasValue)
+                    if (thumb.Handle.Equals(IntPtr.Zero) && window.Rect.HasValue)
                     {
                         if (thumb.Rect == null)
                         {
@@ -196,7 +196,14 @@ namespace Kieker
             {
                 if (window.Thumb != null && window.Thumb.Rect.Contains(new Point(e.X, e.Y)))
                 {
-                    target = window;
+                    if (e.Button == MouseButtons.Left)
+                    {
+                        target = window;
+                    }
+                    else
+                    {
+
+                    }
                     break;
                 }
             }
@@ -298,7 +305,7 @@ namespace Kieker
                 if (dwmEnabled)
                 {
                     int i = DwmApi.DwmRegisterThumbnail(this.windowHandle, window.Handle,
-                        out window.Thumb.Value);
+                        out window.Thumb.Handle);
                     if (i != 0)
                     {
                         Console.WriteLine("Could not register Thumbnail for '" + window.Title + "'");
@@ -371,17 +378,6 @@ namespace Kieker
             theAction.Fork();
         }
 
-        private void CoverMinimizedWindows(IEnumerable<Window> minimizedWindows)
-        {
-            foreach (Window window in minimizedWindows)
-            {
-                window.GetPlacement(true);
-                User32.ShowWindow(window.Handle, Constants.SW_SHOWNOACTIVATE);
-                //User32.SetWindowPos(window.Handle, Constants.HWND_BOTTOM, -16019, -16087, -1, -1,
-                //        Constants.SWP_NOZORDER | Constants.SWP_NOSIZE | Constants.SWP_NOACTIVATE);
-            }
-        }
-
         private void HideWindows(IEnumerable<Window> windows)
         {
             foreach (Window window in windows)
@@ -423,7 +419,6 @@ namespace Kieker
                     if (!SkipWindow(window))
                     {
                         windows.Add(window);
-                        Console.WriteLine("Added '" + window.GetTitle(true) + "'");
                     }
                 }
                 return true;
@@ -456,7 +451,7 @@ namespace Kieker
         {
             foreach (Thumb thumb in windows.Select(w => w.Thumb))
             {
-                if (thumb.Value != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Value);
+                if (thumb.Handle != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Handle);
             }
         }
 
@@ -568,7 +563,7 @@ namespace Kieker
                 {
                     Thumb t = new Thumb(thumb, de.Current.ToRectangle());
                     w.Thumb = t;
-                    UpdateThumb(t);
+                    w.Thumb.Update();
                     de.MoveNext();
                 }
             }
@@ -576,13 +571,13 @@ namespace Kieker
 
         private void SetForegroundThumb(Window window)
         {
-            IntPtr handle = window.Thumb.Value;
+            IntPtr handle = window.Thumb.Handle;
             DwmApi.DwmUnregisterThumbnail(handle);
             int ret = DwmApi.DwmRegisterThumbnail(windowHandle, window.Handle, out handle);
             if (ret == 0)
             {
-                window.Thumb.Value = handle;
-                UpdateThumb(handle, window.Thumb.Destination.ToRect());
+                window.Thumb.Handle = handle;
+                window.Thumb.Update();
             }
         }
 
@@ -637,13 +632,6 @@ namespace Kieker
             return subsegments <= 1 ? segment : (segment - (subsegments - 1) * margin) / subsegments;
         }
 
-        private PSIZE GetSourceSize(IntPtr thumb)
-        {
-            PSIZE size;
-            DwmApi.DwmQueryThumbnailSourceSize(thumb, out size);
-            return size;
-        }
-
         private void MoveThumbs(List<Window> windows, bool forth, Window target)
         {
             int steps = 25;
@@ -669,7 +657,7 @@ namespace Kieker
                     {
                         Rectangle intermediate = GetIntermediate(start, end, (float)f);
                         if (dwmEnabled)
-                            UpdateThumb(thumb.Value, intermediate.ToRect());
+                            thumb.Update(intermediate);
                         else
                             thumb.Rect = intermediate; // we're gonna paint it ourselves
                     }
@@ -678,7 +666,7 @@ namespace Kieker
                         if (dwmEnabled)
                         {
                             thumb.Destination = end;
-                            UpdateThumb(thumb);
+                            thumb.Update();
                         }
                         else
                         {
@@ -690,63 +678,6 @@ namespace Kieker
                     Invoke(new VoidDelegate(Invalidate));
                 int ms = (n == 0) ? 100 : 15;
                 System.Threading.Thread.Sleep(ms);
-            }
-        }
-
-        private PSIZE UpdateThumb(IntPtr thumb, RECT dest)
-        {
-            if (thumb != IntPtr.Zero)
-            {
-                PSIZE size = GetSourceSize(thumb);
-                DWM_THUMBNAIL_PROPERTIES props = new DWM_THUMBNAIL_PROPERTIES();
-                props.dwFlags = Constants.DWM_TNP_VISIBLE | Constants.DWM_TNP_RECTDESTINATION;
-                props.fVisible = true;
-                props.rcDestination = new RECT(dest.Left, dest.Top, dest.Right, dest.Bottom);
-                if (size.x < dest.Right - dest.Left)
-                    props.rcDestination.Right = props.rcDestination.Left + size.x;
-                if (size.y < dest.Bottom - dest.Top)
-                    props.rcDestination.Bottom = props.rcDestination.Top + size.y;
-                DwmApi.DwmUpdateThumbnailProperties(thumb, ref props);
-                return size;
-            }
-            else
-            {
-                return new PSIZE();
-            }
-        }
-
-        private void UpdateThumb(Thumb thumb)
-        {
-            PSIZE size = UpdateThumb(thumb.Value, thumb.Destination.ToRect());
-            PSIZE thumbSize = GetThumbSize(size, thumb.Destination);
-            thumb.Rect = new Rectangle(thumb.Destination.Left, thumb.Destination.Top, 
-                thumbSize.x, thumbSize.y);
-        }
-
-        private PSIZE GetThumbSize(PSIZE sourceSize, Rectangle destination)
-        {
-            if (sourceSize.x < destination.Width && sourceSize.y < destination.Height)
-            {
-                return sourceSize;
-            }
-            else
-            {
-                PSIZE size = new PSIZE();
-                float whq = sourceSize.x / (float)sourceSize.y; // width-height quotient
-                int respectiveHeight = (int)(destination.Width / whq);
-                int respectiveWidth = (int)(destination.Height * whq);
-                if ((whq < 1 && respectiveHeight <= destination.Height) || 
-                    respectiveWidth > destination.Width)
-                {
-                    size.x = destination.Width;
-                    size.y = respectiveHeight;
-                }
-                else
-                {
-                    size.x = respectiveWidth;
-                    size.y = destination.Height;
-                }
-                return size;
             }
         }
 
