@@ -19,7 +19,6 @@ namespace Kieker
         private Settings settings;
 
         private List<Window> windows = new List<Window>();
-        private RectNode thumbRects;
         private bool debug = false;
         private bool modifier = false;
         private bool key = false;
@@ -33,8 +32,7 @@ namespace Kieker
         private bool selectionActive = false;
         private readonly Object animationLock = new Object();
         private bool pauseAnimation = false;
-        private delegate void VoidDelegate();
-        private delegate void ArgRectangle(Rectangle rect);
+        
         private IntPtr windowHandle;
         private RectPainter rectPainter;
 
@@ -234,10 +232,6 @@ namespace Kieker
                 debug = !debug;
                 Invalidate();
             }
-            else if (e.Control && e.KeyCode == Keys.S)
-            {
-                ShowThumbnails();
-            }
             else if (e.KeyCode == Keys.Space)
             {
                 if (!pauseAnimation) pauseAnimation = true;
@@ -380,6 +374,7 @@ namespace Kieker
                 ClearThumbnails();
                 unaction = false;
             };
+            shade.FadeOut();
             theAction.Fork();
         }
 
@@ -550,30 +545,6 @@ namespace Kieker
         protected void MakeGlassy()
         {
 
-        }
-
-        private void ShowThumbnails()
-        {
-            GetWindows();
-            ClearThumbnails();
-            thumbRects = new RectNode(new RECT(Area.Left, Area.Top, 
-                Area.Right, Area.Bottom).ToRectangle());
-            List<RECT> destinations = CalculateThumbDestinations(new RECT(Area.Left, Area.Top, 
-                Area.Right, Area.Bottom), windows.Count);
-            List<RECT>.Enumerator de = destinations.GetEnumerator();
-            de.MoveNext();
-            foreach (Window w in windows)
-            {
-                IntPtr thumb = new IntPtr();
-                int i = DwmApi.DwmRegisterThumbnail(windowHandle, w.Handle, out thumb);
-                if (i == 0)
-                {
-                    Thumb t = new Thumb(thumb, de.Current.ToRectangle());
-                    w.Thumb = t;
-                    w.Thumb.Update();
-                    de.MoveNext();
-                }
-            }
         }
 
         private void SetForegroundThumb(Window window)

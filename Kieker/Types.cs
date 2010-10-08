@@ -6,6 +6,9 @@ using System.Text;
 
 namespace Kieker
 {
+    public delegate void VoidDelegate();
+    public delegate void ArgRectangle(Rectangle rect);
+
     public class Thumb
     {
         /// <summary>

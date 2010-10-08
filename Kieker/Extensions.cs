@@ -68,11 +68,20 @@ namespace Kieker
             return newItem;
         }
 
-        public static void Fork(this Action action)
+        public static void Fork(this Action action, String threadName)
         {
             Thread thread = new Thread(new ThreadStart(action));
+            if (threadName != null)
+            {
+                thread.Name = threadName;
+            }
             thread.IsBackground = true;
             thread.Start();
+        }
+
+        public static void Fork(this Action action)
+        {
+            Fork(action, null);
         }
 
         public static string Max(this string s, int length)
