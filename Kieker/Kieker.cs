@@ -30,6 +30,7 @@ namespace Kieker
         /// and the thumbs are in their final position, waiting for the user's selection.
         /// </summary>
         private bool selectionActive = false;
+
         private readonly Object animationLock = new Object();
         private bool pauseAnimation = false;
         
@@ -73,7 +74,7 @@ namespace Kieker
         private void Kieker_Load(object sender, EventArgs e)
         {
             this.settings = new Settings(this);
-            this.shade = new Shade();
+            this.shade = new Shade(settings);
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
@@ -339,7 +340,11 @@ namespace Kieker
                 IntPtr hforegroundWindow = User32.GetForegroundWindow();
                 ClearThumbnails();
                 if (settings.DimBackground)
-                    Invoke(new VoidDelegate(() => shade.Show()));
+                    Invoke(new VoidDelegate(() =>
+                    {
+                        shade.Show();
+                        shade.FadeIn();
+                    }));
                 Invoke(new VoidDelegate(Show));
                 ShowThumbnailsAnimated(hforegroundWindow);
                 HideWindows(windows);
@@ -616,6 +621,7 @@ namespace Kieker
         private void MoveThumbs(List<Window> windows, bool forth, Window target)
         {
             int steps = 25;
+            int interval = (int)Math.Round((settings.AnimationDuration - 100) / 24d, 0d);
             for (int n = 0; n <= steps; ++n)
             {
                 if (pauseAnimation)
@@ -657,7 +663,7 @@ namespace Kieker
                 }
                 if (!dwmEnabled)
                     Invoke(new VoidDelegate(Invalidate));
-                int ms = (n == 0) ? 100 : 15;
+                int ms = (n == 0) ? 100 : interval;
                 System.Threading.Thread.Sleep(ms);
             }
         }

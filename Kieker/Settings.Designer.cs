@@ -40,6 +40,10 @@
             this.txtModifier = new System.Windows.Forms.TextBox();
             this.btnModifier = new System.Windows.Forms.Button();
             this.cbDimBackground = new System.Windows.Forms.CheckBox();
+            this.tbAnimationDuration = new System.Windows.Forms.TrackBar();
+            this.lblAnimationDuration = new System.Windows.Forms.Label();
+            this.txtAnimationDuration = new System.Windows.Forms.TextBox();
+            ((System.ComponentModel.ISupportInitialize)(this.tbAnimationDuration)).BeginInit();
             this.SuspendLayout();
             // 
             // cbIncludeMinimizedWindows
@@ -138,11 +142,43 @@
             this.cbDimBackground.UseVisualStyleBackColor = true;
             this.cbDimBackground.CheckedChanged += new System.EventHandler(this.cbDimBackground_CheckedChanged);
             // 
+            // tbAnimationDuration
+            // 
+            this.tbAnimationDuration.Location = new System.Drawing.Point(9, 189);
+            this.tbAnimationDuration.Maximum = 1000;
+            this.tbAnimationDuration.Minimum = 124;
+            this.tbAnimationDuration.Name = "tbAnimationDuration";
+            this.tbAnimationDuration.Size = new System.Drawing.Size(212, 45);
+            this.tbAnimationDuration.TabIndex = 10;
+            this.tbAnimationDuration.TickFrequency = 10;
+            this.tbAnimationDuration.Value = 124;
+            this.tbAnimationDuration.Scroll += new System.EventHandler(this.trackBar1_Scroll);
+            // 
+            // lblAnimationDuration
+            // 
+            this.lblAnimationDuration.AutoSize = true;
+            this.lblAnimationDuration.Location = new System.Drawing.Point(6, 173);
+            this.lblAnimationDuration.Name = "lblAnimationDuration";
+            this.lblAnimationDuration.Size = new System.Drawing.Size(126, 13);
+            this.lblAnimationDuration.TabIndex = 11;
+            this.lblAnimationDuration.Text = "Animation Duration in ms:";
+            // 
+            // txtAnimationDuration
+            // 
+            this.txtAnimationDuration.Enabled = false;
+            this.txtAnimationDuration.Location = new System.Drawing.Point(146, 170);
+            this.txtAnimationDuration.Name = "txtAnimationDuration";
+            this.txtAnimationDuration.Size = new System.Drawing.Size(75, 20);
+            this.txtAnimationDuration.TabIndex = 12;
+            // 
             // Settings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(233, 246);
+            this.Controls.Add(this.txtAnimationDuration);
+            this.Controls.Add(this.lblAnimationDuration);
+            this.Controls.Add(this.tbAnimationDuration);
             this.Controls.Add(this.cbDimBackground);
             this.Controls.Add(this.btnModifier);
             this.Controls.Add(this.lblModifier);
@@ -156,6 +192,7 @@
             this.Name = "Settings";
             this.Text = "Kieker Settings";
             this.Load += new System.EventHandler(this.Settings_Load);
+            ((System.ComponentModel.ISupportInitialize)(this.tbAnimationDuration)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -173,5 +210,8 @@
         private System.Windows.Forms.TextBox txtModifier;
         private System.Windows.Forms.Button btnModifier;
         private System.Windows.Forms.CheckBox cbDimBackground;
+        private System.Windows.Forms.TrackBar tbAnimationDuration;
+        private System.Windows.Forms.Label lblAnimationDuration;
+        private System.Windows.Forms.TextBox txtAnimationDuration;
     }
 }

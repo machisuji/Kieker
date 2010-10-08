@@ -14,6 +14,13 @@ namespace Kieker
     {
         private Dictionary<String, Action<String>> loadActions = new Dictionary<String, Action<String>>();
 
+        /// <summary>
+        /// Duration of the window arrangement animation in milliseconds.
+        /// Due to the current implementation, the minimum value for this
+        /// is 124.
+        /// </summary>
+        private int animationDuration = 460;
+
         private bool includeMinimizedWindows = true;
         private bool indicateMinimizedWindows = true;
         private bool dimBackground = true;
@@ -38,10 +45,14 @@ namespace Kieker
                 (value) => indicateMinimizedWindows = Boolean.Parse(value));
             loadActions.Add("dimBackground",
                 (value) => dimBackground = Boolean.Parse(value));
+
             loadActions.Add("hotkey",
                 (value) => hotkey = (Keys)Enum.Parse(typeof(Keys), value));
             loadActions.Add("modifier",
                 (value) => modifier = (Keys)Enum.Parse(typeof(Keys), value));
+
+            loadActions.Add("animationDuration",
+                (value) => animationDuration = Int32.Parse(value));
         }
 
         public Settings(ThumbView view) : this()
@@ -134,6 +145,8 @@ namespace Kieker
             cbDimBackground.Checked = dimBackground;
             txtHotkey.Text = hotkey.ToString();
             txtModifier.Text = modifier.ToString();
+            txtAnimationDuration.Text = animationDuration.ToString();
+            tbAnimationDuration.Value = animationDuration;
         }
 
         public void LoadSettings()
@@ -170,7 +183,8 @@ namespace Kieker
                 "indicateMinimizedWindows=" + indicateMinimizedWindows.ToString(),
                 "dimBackground=" + dimBackground.ToString(),
                 "hotkey=" + hotkey.ToString(),
-                "modifier=" + modifier.ToString()
+                "modifier=" + modifier.ToString(),
+                "animationDuration=" + animationDuration.ToString()
             };
             try
             {
@@ -191,6 +205,18 @@ namespace Kieker
         private void toolTip1_Popup(object sender, PopupEventArgs e)
         {
 
+        }
+
+        public int AnimationDuration
+        {
+            get { return animationDuration; }
+            set
+            {
+                if (value >= 124)
+                    animationDuration = value;
+                else
+                    throw new ArgumentException("The duration must be at least 124ms long.");
+            }
         }
 
         private void cbIncludeMinimizedWindows_CheckedChanged(object sender, EventArgs e)
@@ -251,6 +277,12 @@ namespace Kieker
         protected void DisableHotkey()
         {
             view.HotkeyEnabled = false;
+        }
+
+        private void trackBar1_Scroll(object sender, EventArgs e)
+        {
+            txtAnimationDuration.Text = tbAnimationDuration.Value.ToString();
+            animationDuration = tbAnimationDuration.Value;
         }
     }
 }

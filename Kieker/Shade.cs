@@ -11,16 +11,19 @@ namespace Kieker
 {
     public partial class Shade : Form
     {
+        private Settings settings;
+
         private volatile bool fadeIn = true;
         private int steps = 30;
         private double transparency = 0.25;
         private Timer fadeTimer;
 
-        public Shade()
+        public Shade(Settings settings)
         {
+            this.settings = settings;
+
             InitializeComponent();
 
-            this.VisibleChanged += new EventHandler(Shade_VisibleChanged);
             this.fadeTimer = CreateTimer();
         }
 
@@ -63,22 +66,23 @@ namespace Kieker
             }
         }
 
-        void Shade_VisibleChanged(object sender, EventArgs e)
+        public void FadeIn()
         {
-            if (Visible)
-            {
-                fadeTimer.Start();
-            }
-            else
-            {
-                Opacity = 0;
-                fadeIn = true;
-            }
+            Opacity = 0;
+            fadeIn = true;
+            StartTimer();
         }
 
         public void FadeOut()
         {
+            Opacity = GetOpacity();
             fadeIn = false;
+            StartTimer();
+        }
+
+        protected void StartTimer()
+        {
+            fadeTimer.Interval = (int)Math.Round((settings.AnimationDuration - 50) / (double)steps, 0d);
             fadeTimer.Start();
         }
 
