@@ -16,6 +16,7 @@ namespace Kieker
 
         private bool includeMinimizedWindows = true;
         private bool indicateMinimizedWindows = true;
+        private bool dimBackground = true;
 
         private Keys hotkey = Keys.Oem5;
         private Keys modifier = Keys.LControlKey;
@@ -35,6 +36,8 @@ namespace Kieker
                 (value) => includeMinimizedWindows = Boolean.Parse(value));
             loadActions.Add("indicateMinimizedWindows",
                 (value) => indicateMinimizedWindows = Boolean.Parse(value));
+            loadActions.Add("dimBackground",
+                (value) => dimBackground = Boolean.Parse(value));
             loadActions.Add("hotkey",
                 (value) => hotkey = (Keys)Enum.Parse(typeof(Keys), value));
             loadActions.Add("modifier",
@@ -95,6 +98,12 @@ namespace Kieker
             set { modifier = value; }
         }
 
+        public bool DimBackground
+        {
+            get { return dimBackground; }
+            set { dimBackground = value; }
+        }
+
         public bool IncludeMinimizedWindows
         {
             get { return includeMinimizedWindows; }
@@ -122,6 +131,7 @@ namespace Kieker
         {
             cbIncludeMinimizedWindows.Checked = includeMinimizedWindows;
             cbIndicateMinimizedWindows.Checked = indicateMinimizedWindows;
+            cbDimBackground.Checked = dimBackground;
             txtHotkey.Text = hotkey.ToString();
             txtModifier.Text = modifier.ToString();
         }
@@ -158,10 +168,18 @@ namespace Kieker
             {
                 "includeMinimizedWindows=" + includeMinimizedWindows.ToString(),
                 "indicateMinimizedWindows=" + indicateMinimizedWindows.ToString(),
+                "dimBackground=" + dimBackground.ToString(),
                 "hotkey=" + hotkey.ToString(),
                 "modifier=" + modifier.ToString()
             };
-            File.WriteAllLines("kieker.ini", lines);
+            try
+            {
+                File.WriteAllLines("kieker.ini", lines);
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show("Kieker settings could not be saved due to: " + e.Message);
+            }
         }
 
         void Settings_FormClosing(object sender, FormClosingEventArgs e)
@@ -184,6 +202,11 @@ namespace Kieker
         private void cbIndicateMinimizedWindows_CheckedChanged(object sender, EventArgs e)
         {
             indicateMinimizedWindows = cbIndicateMinimizedWindows.Checked;
+        }
+
+        private void cbDimBackground_CheckedChanged(object sender, EventArgs e)
+        {
+            dimBackground = cbDimBackground.Checked;
         }
 
         private void btnHotkey_Click(object sender, EventArgs e)

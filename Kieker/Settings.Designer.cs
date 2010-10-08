@@ -39,6 +39,7 @@
             this.lblModifier = new System.Windows.Forms.Label();
             this.txtModifier = new System.Windows.Forms.TextBox();
             this.btnModifier = new System.Windows.Forms.Button();
+            this.cbDimBackground = new System.Windows.Forms.CheckBox();
             this.SuspendLayout();
             // 
             // cbIncludeMinimizedWindows
@@ -49,8 +50,7 @@
             this.cbIncludeMinimizedWindows.Size = new System.Drawing.Size(157, 17);
             this.cbIncludeMinimizedWindows.TabIndex = 1;
             this.cbIncludeMinimizedWindows.Text = "Include Minimized Windows";
-            this.ttIncludeMinimizedWindows.SetToolTip(this.cbIncludeMinimizedWindows, "If this box is checked, Kieker will also include minimized windows,\r\nwhich it doe" +
-                    "sn\'t per default.");
+            this.ttIncludeMinimizedWindows.SetToolTip(this.cbIncludeMinimizedWindows, "If this box is checked, Kieker will also include minimized windows.");
             this.cbIncludeMinimizedWindows.UseVisualStyleBackColor = true;
             this.cbIncludeMinimizedWindows.CheckedChanged += new System.EventHandler(this.cbIncludeMinimizedWindows_CheckedChanged);
             // 
@@ -126,11 +126,24 @@
             this.btnModifier.UseVisualStyleBackColor = true;
             this.btnModifier.Click += new System.EventHandler(this.btnModifier_Click);
             // 
+            // cbDimBackground
+            // 
+            this.cbDimBackground.AutoSize = true;
+            this.cbDimBackground.Location = new System.Drawing.Point(12, 58);
+            this.cbDimBackground.Name = "cbDimBackground";
+            this.cbDimBackground.Size = new System.Drawing.Size(186, 17);
+            this.cbDimBackground.TabIndex = 9;
+            this.cbDimBackground.Text = "Dim Background During Selection";
+            this.ttIncludeMinimizedWindows.SetToolTip(this.cbDimBackground, "Check this box if the desktop shall be dimmed during window selection.");
+            this.cbDimBackground.UseVisualStyleBackColor = true;
+            this.cbDimBackground.CheckedChanged += new System.EventHandler(this.cbDimBackground_CheckedChanged);
+            // 
             // Settings
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(233, 246);
+            this.Controls.Add(this.cbDimBackground);
             this.Controls.Add(this.btnModifier);
             this.Controls.Add(this.lblModifier);
             this.Controls.Add(this.txtModifier);
@@ -159,5 +172,6 @@
         private System.Windows.Forms.Label lblModifier;
         private System.Windows.Forms.TextBox txtModifier;
         private System.Windows.Forms.Button btnModifier;
+        private System.Windows.Forms.CheckBox cbDimBackground;
     }
 }

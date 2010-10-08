@@ -338,7 +338,8 @@ namespace Kieker
                 action = true;
                 IntPtr hforegroundWindow = User32.GetForegroundWindow();
                 ClearThumbnails();
-                Invoke(new VoidDelegate(() => shade.Show()));
+                if (settings.DimBackground)
+                    Invoke(new VoidDelegate(() => shade.Show()));
                 Invoke(new VoidDelegate(Show));
                 ShowThumbnailsAnimated(hforegroundWindow);
                 HideWindows(windows);
@@ -370,11 +371,13 @@ namespace Kieker
                 if (target != null)
                     User32.SetForegroundWindow(target.Handle);
                 Invoke(new VoidDelegate(Hide));
-                Invoke(new VoidDelegate(() => shade.Hide()));
+                if (settings.DimBackground)
+                    Invoke(new VoidDelegate(() => shade.Hide()));
                 ClearThumbnails();
                 unaction = false;
             };
-            shade.FadeOut();
+            if (settings.DimBackground)
+                shade.FadeOut();
             theAction.Fork();
         }
 
