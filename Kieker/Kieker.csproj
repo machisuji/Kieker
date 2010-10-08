@@ -86,6 +86,12 @@
     <Compile Include="debug.cs" />
     <Compile Include="DllImport.cs" />
     <Compile Include="Extensions.cs" />
+    <Compile Include="Shade.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Shade.Designer.cs">
+      <DependentUpon>Shade.cs</DependentUpon>
+    </Compile>
     <Compile Include="Kieker.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -94,6 +100,9 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="Shade.resx">
+      <DependentUpon>Shade.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Kieker.resx">
       <DependentUpon>Kieker.cs</DependentUpon>
       <SubType>Designer</SubType>

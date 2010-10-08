@@ -38,6 +38,8 @@ namespace Kieker
         private IntPtr windowHandle;
         private RectPainter rectPainter;
 
+        private Shade shade;
+
         private Rectangle? highlightRect = new Nullable<Rectangle>();
         private Window focusedWindow;
 
@@ -73,6 +75,7 @@ namespace Kieker
         private void Kieker_Load(object sender, EventArgs e)
         {
             this.settings = new Settings(this);
+            this.shade = new Shade();
             this.windowHandle = this.Handle;
             HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
             HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
@@ -160,7 +163,8 @@ namespace Kieker
                 }
                 if (highlightRect.HasValue)
                 {
-                    e.Graphics.DrawRectangle(new Pen(SystemColors.ControlLight, 2), highlightRect.Value);
+                    e.Graphics.FillRectangle(new SolidBrush(SystemColors.ActiveCaption), 
+                        highlightRect.Value.GetExpanded(-5, -5));
                 }
             }
             rectPainter.Paint(sender, e);
@@ -202,7 +206,7 @@ namespace Kieker
                     }
                     else
                     {
-
+                        window.Thumb.GrowBy(0.25);
                     }
                     break;
                 }
@@ -340,12 +344,12 @@ namespace Kieker
                 action = true;
                 IntPtr hforegroundWindow = User32.GetForegroundWindow();
                 ClearThumbnails();
+                Invoke(new VoidDelegate(() => shade.Show()));
                 Invoke(new VoidDelegate(Show));
-                Invoke(new VoidDelegate(Activate));
-                //CoverMinimizedWindows(windows.FindAll(w => User32.IsIconic(w.Handle)));
                 ShowThumbnailsAnimated(hforegroundWindow);
                 HideWindows(windows);
                 action = false;
+                Invoke(new VoidDelegate(Activate));
             };
             theAction.Fork();
         }
@@ -372,6 +376,7 @@ namespace Kieker
                 if (target != null)
                     User32.SetForegroundWindow(target.Handle);
                 Invoke(new VoidDelegate(Hide));
+                Invoke(new VoidDelegate(() => shade.Hide()));
                 ClearThumbnails();
                 unaction = false;
             };
@@ -461,6 +466,8 @@ namespace Kieker
             ClearThumbnails();
             settings.Dispose();
             settings = null;
+            shade.Dispose();
+            shade = null;
             Application.Exit();
         }
 
