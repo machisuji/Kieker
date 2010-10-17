@@ -166,6 +166,8 @@ namespace Kieker
 
             public const uint GW_HWNDNEXT = 2;
             public const uint GW_HWNDPREV = 3;
+
+            public const int WM_CLOSE = 0x0010;
         }
 
         public class Gdi32
@@ -188,6 +190,9 @@ namespace Kieker
 
         public class User32
         {
+            [DllImport("user32.dll")]
+            public static extern int SendMessage(IntPtr hWnd, int Msg, int wParam, int lParam);
+
             [DllImport("user32.dll")]
             public static extern int GetWindowThreadProcessId(IntPtr hwnd, out int processId);
 

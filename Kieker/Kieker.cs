@@ -11,6 +11,7 @@ using Microsoft.Win32;
 using System.Threading;
 using Kieker.DllImport;
 using Gma.UserActivityMonitor;
+using System.Diagnostics;
 
 namespace Kieker
 {
@@ -203,14 +204,41 @@ namespace Kieker
                     {
                         target = window;
                     }
-                    else
+                    else if (e.Button == MouseButtons.Right)
                     {
                         window.Thumb.GrowBy(0.25);
+                    }
+                    else if (e.Button == MouseButtons.Middle)
+                    {
+                        Close(window);
                     }
                     break;
                 }
             }
             if (target != null && !unaction) Unaction(target);
+        }
+
+        private void Close(Window window)
+        {
+            Action closing = () =>
+            {
+                if (focusedWindow == window && highlightRect.HasValue)
+                {
+                    Rectangle highlight = this.highlightRect.Value;
+                    this.highlightRect = new Nullable<Rectangle>();
+                    Invoke(new ArgRectangle(Invalidate), highlight);
+                }
+                Thumb thumb = window.Thumb;
+                for (double d = 0.1; d < 1.0; d += 0.1)
+                {
+                    thumb.GrowBy(-d);
+                    System.Threading.Thread.Sleep(10);
+                }
+                window.Thumb.Unregister();
+                window.Close();
+                windows.Remove(window);
+            };
+            closing.Fork();
         }
 
         void Kieker_KeyDown(object sender, KeyEventArgs e)
@@ -457,9 +485,9 @@ namespace Kieker
 
         private void ClearThumbnails()
         {
-            foreach (Thumb thumb in windows.Select(w => w.Thumb))
+            foreach (Window window in windows)
             {
-                if (thumb.Handle != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(thumb.Handle);
+                window.Thumb.Unregister();
             }
         }
 

@@ -33,6 +33,11 @@ namespace Kieker
             Destination = destination;
         }
 
+        public void Unregister()
+        {
+            if (Handle != IntPtr.Zero) DwmApi.DwmUnregisterThumbnail(Handle);
+        }
+
         /// <summary>
         /// Grows the thumb without actually changing the destination.
         /// Only the current thumb view will grow.
@@ -158,6 +163,15 @@ namespace Kieker
         {
             this.handle = handle;
             GetTitle(true);
+        }
+
+        /// <summary>
+        /// Sends WM_CLOSE to this window, which should prompt it to close.
+        /// </summary>
+        /// <returns>Returns true if the window has processed the message.</returns>
+        public bool Close()
+        {
+            return User32.SendMessage(this.handle, Constants.WM_CLOSE, 0, 0) == 0;
         }
 
         public Thumb Thumb
