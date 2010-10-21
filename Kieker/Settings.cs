@@ -25,8 +25,9 @@ namespace Kieker
         private bool indicateMinimizedWindows = true;
         private bool dimBackground = true;
 
-        private Keys hotkey = Keys.Oem5;
-        private Keys modifier = Keys.LControlKey;
+        private Keys[] hotkey = new Keys[] {
+            Keys.LMenu, Keys.Oem5
+        };
 
         private bool changeHotkey = false;
         private bool changeModifier = false;
@@ -47,9 +48,7 @@ namespace Kieker
                 (value) => dimBackground = Boolean.Parse(value));
 
             loadActions.Add("hotkey",
-                (value) => hotkey = (Keys)Enum.Parse(typeof(Keys), value));
-            loadActions.Add("modifier",
-                (value) => modifier = (Keys)Enum.Parse(typeof(Keys), value));
+                (value) => hotkey = Hotkeys.Parse(value));
 
             loadActions.Add("animationDuration",
                 (value) => animationDuration = Int32.Parse(value));
@@ -58,32 +57,19 @@ namespace Kieker
         public Settings(ThumbView view) : this()
         {
             this.view = view;
-            view.GlobalKeyDown += new KeyEventHandler(Settings_KeyDown);
-        }
-
-        protected void Settings_KeyDown(object sender, KeyEventArgs args)
-        {
-            if (changeHotkey)
+            Hotkeys.Add((keys) =>
             {
-                txtHotkey.Text = args.KeyCode.ToString();
-                hotkey = args.KeyCode;
-            }
-            else if (changeModifier)
-            {
-                txtModifier.Text = args.KeyData.ToString();
-                modifier = args.KeyCode;
-            }
-        }
-
-        public bool IsHotkey(Keys keys)
-        {
-            Keys modifiers = keys & Keys.Modifiers;
-            Keys keyCode = keys & Keys.KeyCode;
-            Keys hkModifiers = hotkey & Keys.Modifiers;
-            Keys hkKeyCode = hotkey & Keys.KeyCode;
-            Console.WriteLine("HK[" + hkModifiers + " + " + hkKeyCode + "] vs KD[" + 
-                modifiers + " + " + keyCode + "]"); 
-            return (keys & hotkey) == hotkey;
+                if (changeHotkey)
+                {
+                    txtHotkey.Text = Hotkeys.ToString(keys);
+                    hotkey = keys;
+                }
+                else
+                {
+                    return false;
+                }
+                return true;
+            });
         }
 
         protected override bool ProcessDialogKey(Keys keys)
@@ -97,16 +83,10 @@ namespace Kieker
             return !changeHotkey ? base.ProcessDialogKey(keys) : false;
         }
 
-        public Keys Hotkey
+        public Keys[] Hotkey
         {
             get { return hotkey; }
             set { hotkey = value; }
-        }
-
-        public Keys Modifier
-        {
-            get { return modifier; }
-            set { modifier = value; }
         }
 
         public bool DimBackground
@@ -143,8 +123,7 @@ namespace Kieker
             cbIncludeMinimizedWindows.Checked = includeMinimizedWindows;
             cbIndicateMinimizedWindows.Checked = indicateMinimizedWindows;
             cbDimBackground.Checked = dimBackground;
-            txtHotkey.Text = hotkey.ToString();
-            txtModifier.Text = modifier.ToString();
+            txtHotkey.Text = Hotkeys.ToString(hotkey);
             txtAnimationDuration.Text = animationDuration.ToString();
             tbAnimationDuration.Value = animationDuration;
         }
@@ -182,8 +161,7 @@ namespace Kieker
                 "includeMinimizedWindows=" + includeMinimizedWindows.ToString(),
                 "indicateMinimizedWindows=" + indicateMinimizedWindows.ToString(),
                 "dimBackground=" + dimBackground.ToString(),
-                "hotkey=" + hotkey.ToString(),
-                "modifier=" + modifier.ToString(),
+                "hotkey=" + Hotkeys.ToString(hotkey),
                 "animationDuration=" + animationDuration.ToString()
             };
             try
@@ -248,23 +226,6 @@ namespace Kieker
             {
                 changeHotkey = false;
                 btnHotkey.Text = "Change";
-                EnableHotkey();
-            }
-        }
-
-        private void btnModifier_Click(object sender, EventArgs e)
-        {
-            if (changeHotkey) return;
-            if (!changeModifier)
-            {
-                changeModifier = true;
-                btnModifier.Text = "Apply";
-                DisableHotkey();
-            }
-            else
-            {
-                changeModifier = false;
-                btnModifier.Text = "Change";
                 EnableHotkey();
             }
         }

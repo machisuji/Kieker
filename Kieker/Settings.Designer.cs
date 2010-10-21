@@ -33,13 +33,10 @@
             this.cbIncludeMinimizedWindows = new System.Windows.Forms.CheckBox();
             this.ttIncludeMinimizedWindows = new System.Windows.Forms.ToolTip(this.components);
             this.cbIndicateMinimizedWindows = new System.Windows.Forms.CheckBox();
+            this.cbDimBackground = new System.Windows.Forms.CheckBox();
             this.txtHotkey = new System.Windows.Forms.TextBox();
             this.btnHotkey = new System.Windows.Forms.Button();
             this.lblHotkey = new System.Windows.Forms.Label();
-            this.lblModifier = new System.Windows.Forms.Label();
-            this.txtModifier = new System.Windows.Forms.TextBox();
-            this.btnModifier = new System.Windows.Forms.Button();
-            this.cbDimBackground = new System.Windows.Forms.CheckBox();
             this.tbAnimationDuration = new System.Windows.Forms.TrackBar();
             this.lblAnimationDuration = new System.Windows.Forms.Label();
             this.txtAnimationDuration = new System.Windows.Forms.TextBox();
@@ -76,60 +73,6 @@
             this.cbIndicateMinimizedWindows.UseVisualStyleBackColor = true;
             this.cbIndicateMinimizedWindows.CheckedChanged += new System.EventHandler(this.cbIndicateMinimizedWindows_CheckedChanged);
             // 
-            // txtHotkey
-            // 
-            this.txtHotkey.Enabled = false;
-            this.txtHotkey.Location = new System.Drawing.Point(56, 115);
-            this.txtHotkey.Name = "txtHotkey";
-            this.txtHotkey.Size = new System.Drawing.Size(84, 20);
-            this.txtHotkey.TabIndex = 3;
-            // 
-            // btnHotkey
-            // 
-            this.btnHotkey.Location = new System.Drawing.Point(146, 112);
-            this.btnHotkey.Name = "btnHotkey";
-            this.btnHotkey.Size = new System.Drawing.Size(75, 23);
-            this.btnHotkey.TabIndex = 4;
-            this.btnHotkey.Text = "Change";
-            this.btnHotkey.UseVisualStyleBackColor = true;
-            this.btnHotkey.Click += new System.EventHandler(this.btnHotkey_Click);
-            // 
-            // lblHotkey
-            // 
-            this.lblHotkey.AutoSize = true;
-            this.lblHotkey.Location = new System.Drawing.Point(6, 118);
-            this.lblHotkey.Name = "lblHotkey";
-            this.lblHotkey.Size = new System.Drawing.Size(44, 13);
-            this.lblHotkey.TabIndex = 5;
-            this.lblHotkey.Text = "Hotkey:";
-            // 
-            // lblModifier
-            // 
-            this.lblModifier.AutoSize = true;
-            this.lblModifier.Location = new System.Drawing.Point(6, 144);
-            this.lblModifier.Name = "lblModifier";
-            this.lblModifier.Size = new System.Drawing.Size(47, 13);
-            this.lblModifier.TabIndex = 7;
-            this.lblModifier.Text = "Modifier:";
-            // 
-            // txtModifier
-            // 
-            this.txtModifier.Enabled = false;
-            this.txtModifier.Location = new System.Drawing.Point(56, 141);
-            this.txtModifier.Name = "txtModifier";
-            this.txtModifier.Size = new System.Drawing.Size(84, 20);
-            this.txtModifier.TabIndex = 6;
-            // 
-            // btnModifier
-            // 
-            this.btnModifier.Location = new System.Drawing.Point(146, 139);
-            this.btnModifier.Name = "btnModifier";
-            this.btnModifier.Size = new System.Drawing.Size(75, 23);
-            this.btnModifier.TabIndex = 8;
-            this.btnModifier.Text = "Change";
-            this.btnModifier.UseVisualStyleBackColor = true;
-            this.btnModifier.Click += new System.EventHandler(this.btnModifier_Click);
-            // 
             // cbDimBackground
             // 
             this.cbDimBackground.AutoSize = true;
@@ -141,6 +84,35 @@
             this.ttIncludeMinimizedWindows.SetToolTip(this.cbDimBackground, "Check this box if the desktop shall be dimmed during window selection.");
             this.cbDimBackground.UseVisualStyleBackColor = true;
             this.cbDimBackground.CheckedChanged += new System.EventHandler(this.cbDimBackground_CheckedChanged);
+            // 
+            // txtHotkey
+            // 
+            this.txtHotkey.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Left)
+                        | System.Windows.Forms.AnchorStyles.Right)));
+            this.txtHotkey.Enabled = false;
+            this.txtHotkey.Location = new System.Drawing.Point(12, 115);
+            this.txtHotkey.Name = "txtHotkey";
+            this.txtHotkey.Size = new System.Drawing.Size(209, 20);
+            this.txtHotkey.TabIndex = 3;
+            // 
+            // btnHotkey
+            // 
+            this.btnHotkey.Location = new System.Drawing.Point(9, 86);
+            this.btnHotkey.Name = "btnHotkey";
+            this.btnHotkey.Size = new System.Drawing.Size(75, 23);
+            this.btnHotkey.TabIndex = 4;
+            this.btnHotkey.Text = "Change";
+            this.btnHotkey.UseVisualStyleBackColor = true;
+            this.btnHotkey.Click += new System.EventHandler(this.btnHotkey_Click);
+            // 
+            // lblHotkey
+            // 
+            this.lblHotkey.AutoSize = true;
+            this.lblHotkey.Location = new System.Drawing.Point(90, 91);
+            this.lblHotkey.Name = "lblHotkey";
+            this.lblHotkey.Size = new System.Drawing.Size(44, 13);
+            this.lblHotkey.TabIndex = 5;
+            this.lblHotkey.Text = "Hotkey:";
             // 
             // tbAnimationDuration
             // 
@@ -180,9 +152,6 @@
             this.Controls.Add(this.lblAnimationDuration);
             this.Controls.Add(this.tbAnimationDuration);
             this.Controls.Add(this.cbDimBackground);
-            this.Controls.Add(this.btnModifier);
-            this.Controls.Add(this.lblModifier);
-            this.Controls.Add(this.txtModifier);
             this.Controls.Add(this.lblHotkey);
             this.Controls.Add(this.btnHotkey);
             this.Controls.Add(this.txtHotkey);
@@ -206,9 +175,6 @@
         private System.Windows.Forms.TextBox txtHotkey;
         private System.Windows.Forms.Button btnHotkey;
         private System.Windows.Forms.Label lblHotkey;
-        private System.Windows.Forms.Label lblModifier;
-        private System.Windows.Forms.TextBox txtModifier;
-        private System.Windows.Forms.Button btnModifier;
         private System.Windows.Forms.CheckBox cbDimBackground;
         private System.Windows.Forms.TrackBar tbAnimationDuration;
         private System.Windows.Forms.Label lblAnimationDuration;

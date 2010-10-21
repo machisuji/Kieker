@@ -21,16 +21,15 @@ namespace Kieker
 
         private List<Window> windows = new List<Window>();
         private bool debug = false;
-        private bool modifier = false;
-        private bool key = false;
-        private bool action = false;
-        private bool unaction = false;
-        private bool hotkeyEnabled = true;
+        private volatile bool selectionCycle = false;
+        private volatile bool action = false;
+        private volatile bool unaction = false;
+        private volatile bool hotkeyEnabled = true;
         /// <summary>
         /// The selection mode is active when the initial thumb animation has finished
         /// and the thumbs are in their final position, waiting for the user's selection.
         /// </summary>
-        private bool selectionActive = false;
+        private volatile bool selectionActive = false;
 
         private readonly Object animationLock = new Object();
         private bool pauseAnimation = false;
@@ -77,10 +76,23 @@ namespace Kieker
             this.settings = new Settings(this);
             this.shade = new Shade(settings);
             this.windowHandle = this.Handle;
-            HookManager.KeyDown += new KeyEventHandler(HookManager_KeyDown);
-            HookManager.KeyUp += new KeyEventHandler(HookManager_KeyUp);
 
             settings.LoadSettings();
+            Hotkeys.Add((keys) =>
+            {
+                if (hotkeyEnabled & Hotkeys.Equal(keys, settings.Hotkey))
+                {
+                    if (!selectionCycle)
+                    {
+                        Action();
+                    }
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            });
         }
 
         void ThumbView_MouseMove(object sender, MouseEventArgs e)
@@ -113,8 +125,6 @@ namespace Kieker
         void HookManager_KeyUp(object sender, KeyEventArgs e)
         {
             globalKeyUp.Invoke(sender, e);
-            if (e.KeyCode == settings.Modifier) modifier = false;
-            else if (e.KeyCode == settings.Hotkey) key = false;
         }
 
         protected void HookManager_Dummy(object sender, KeyEventArgs e)
@@ -125,13 +135,6 @@ namespace Kieker
         void HookManager_KeyDown(object sender, KeyEventArgs e)
         {
             globalKeyDown.Invoke(sender, e);
-            if (e.KeyCode == settings.Modifier) modifier = true;
-            else if (e.KeyCode == settings.Hotkey) key = true;
-            if (hotkeyEnabled && !Visible && !action && modifier && key)
-            {
-                e.Handled = true;
-                Action();
-            }
         }
 
         void Kieker_Paint(object sender, PaintEventArgs e)
@@ -362,6 +365,7 @@ namespace Kieker
 
         void Action()
         {
+            selectionCycle = true;
             Action theAction = () =>
             {
                 action = true;
@@ -408,6 +412,7 @@ namespace Kieker
                     Invoke(new VoidDelegate(() => shade.Hide()));
                 ClearThumbnails();
                 unaction = false;
+                selectionCycle = false;
             };
             if (settings.DimBackground)
                 shade.FadeOut();

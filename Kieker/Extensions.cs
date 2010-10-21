@@ -8,6 +8,13 @@ namespace Kieker
 {
     public static class ExtensionsClass
     {
+        public static ICollection<T> Join<T>(this ICollection<T> these, ICollection<T> those)
+        {
+            ICollection<T> all = new List<T>(these);
+            foreach (T item in those) all.Add(item);
+            return all;
+        }
+
         public static void MoveToEnd<T>(this ICollection<T> items, T item)
         {
             items.Remove(item);
